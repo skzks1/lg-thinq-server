@@ -326,16 +326,3 @@ if __name__ == "__main__":
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-from flask import request
-
-@app.route("/oauth")
-def oauth():
-
-    code = request.args.get("code")
-
-    return f"""
-    <h1>카카오 인증 성공</h1>
-    <p>CODE:</p>
-    <textarea rows="5" cols="100">{code}</textarea>
-    """
