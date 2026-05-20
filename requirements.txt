@@ -3,3 +3,5 @@ aiohttp==3.9.5
 gunicorn==22.0.0
 thinqconnect==1.0.12
 requests
+pyOpenSSL
+awsiotsdk
