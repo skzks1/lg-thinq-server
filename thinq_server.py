@@ -262,4 +262,5 @@ if __name__ == "__main__":
     print(f"  공개 상태조회: {PUBLIC_SITE_URL}")
     print(f"  관리자 사이트: {PUBLIC_SITE_URL}/admin")
     print("=" * 50)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
