@@ -121,6 +121,10 @@ def run_async(coro):
 def index():
     return send_from_directory(".", "thinq_status.html")
 
+@app.route("/oauth")
+def oauth():
+    return "카카오 인증 성공!"
+
 @app.route("/admin")
 def admin():
     return send_from_directory(".", "thinq_dashboard.html")
