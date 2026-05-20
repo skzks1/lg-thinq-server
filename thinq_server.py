@@ -12,6 +12,64 @@ import json
 from flask import Flask, jsonify, request, send_from_directory
 from aiohttp import ClientSession
 from thinqconnect import ThinQApi
+import random
+import requests
+import json
+
+
+def send_kakao_message(message):
+    access_token = "카카오토큰"
+
+    url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    data = {
+        "template_object": json.dumps({
+            "object_type": "text",
+            "text": message,
+            "link": {
+                "web_url": "https://lg-thinq-server.onrender.com/"
+            }
+        })
+    }
+
+    requests.post(url, headers=headers, data=data)
+
+
+
+WASHER_TIPS = [
+    "세탁 후 바로 꺼내면 냄새를 줄일 수 있어요.",
+    "수건은 따로 세탁하면 더 위생적이에요.",
+    "세제는 너무 많이 넣지 않는 게 좋아요."
+]
+
+DRYER_TIPS = [
+    "건조 후 바로 꺼내면 구김이 줄어들어요.",
+    "먼지 필터를 자주 청소하면 효율이 좋아져요.",
+    "과건조는 옷감 손상의 원인이 될 수 있어요."
+]
+
+def get_tip(device_type):
+    if random.random() > 0.4:
+        return ""
+
+    if device_type == "washer":
+        return f"\n\nTip 💡\n{random.choice(WASHER_TIPS)}"
+
+    if device_type == "dryer":
+        return f"\n\nTip 💡\n{random.choice(DRYER_TIPS)}"
+
+    return ""
+
+last_status = None
+start_sent = False
+almost_done_sent = False
+complete_sent = False
+
+
 
 app = Flask(__name__, static_folder=".")
 PUBLIC_SITE_URL = "https://injedormitory.dothome.co.kr"
@@ -264,3 +322,16 @@ if __name__ == "__main__":
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+from flask import request
+
+@app.route("/oauth")
+def oauth():
+
+    code = request.args.get("code")
+
+    return f"""
+    <h1>카카오 인증 성공</h1>
+    <p>CODE:</p>
+    <textarea rows="5" cols="100">{code}</textarea>
+    """
