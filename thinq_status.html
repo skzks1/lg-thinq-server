@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인제고 기숙사 ThinQ 상태 조회</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: #f5f6f8;
+  color: #18182f;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 28px;
+}
+.wrap { max-width: 920px; margin: 0 auto; }
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+h1 { font-size: 26px; letter-spacing: -.4px; }
+.sub { color: #74788a; font-size: 14px; margin-top: 6px; }
+.updated {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 999px;
+  color: #74788a;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 28px rgba(20, 20, 45, .05);
+}
+.top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.icon { font-size: 38px; }
+.name { font-size: 20px; font-weight: 700; letter-spacing: -.2px; }
+.model { color: #858a99; font-size: 13px; margin-top: 4px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.badge {
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 12px;
+}
+.on { background: #eef7ff; color: #1763a6; }
+.off { background: #f0f1f4; color: #7b8190; }
+.run { background: #eaf8e8; color: #247a28; }
+.idle { background: #f4f4f6; color: #74788a; }
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.stat {
+  background: #f8f9fb;
+  border: 1px solid #eef0f5;
+  border-radius: 12px;
+  padding: 14px;
+}
+.label { color: #777d8d; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.value { font-size: 17px; font-weight: 700; }
+.empty, .error {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 16px;
+  color: #74788a;
+  padding: 36px 20px;
+  text-align: center;
+}
+.error { color: #c43b55; }
+@media (max-width: 640px) {
+  body { padding: 18px; }
+  .head { align-items: flex-start; flex-direction: column; }
+  h1 { font-size: 23px; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="head">
+    <div>
+      <h1>인제 기숙사 상태 조회</h1>
+      <div class="sub">세탁기와 건조기의 전원, 작동 상태, 남은 시간만 표시됩니다.</div>
+    </div>
+    <div class="updated" id="updated">불러오는 중</div>
+  </div>
+  <div id="content" class="empty">상태를 불러오는 중입니다.</div>
+</main>
+
+<script>
+function iconFor(type) {
+  if (type === 'WASHER') return '🫧';
+  if (type === 'DRYER') return '🌀';
+  return '📦';
+}
+
+function runText(device) {
+  if (device.running) return '작동 중';
+  if (device.runState === 'INITIAL' || device.runState === 'STANDBY') return '대기';
+  return device.runState || '대기';
+}
+
+function render(devices) {
+  if (!devices.length) {
+    document.getElementById('content').className = 'empty';
+    document.getElementById('content').textContent = '표시할 기기가 없습니다.';
+    return;
+  }
+  document.getElementById('content').className = 'grid';
+  document.getElementById('content').innerHTML = devices.map(device => {
+    const powerOn = device.power === 'ON';
+    return `
+      <section class="card">
+        <div class="top">
+          <div class="icon">${iconFor(device.type)}</div>
+          <div>
+            <div class="name">${device.name}</div>
+            <div class="model">${device.model || device.type}</div>
+          </div>
+        </div>
+        <div class="badges">
+          <div class="badge ${powerOn ? 'on' : 'off'}">${powerOn ? '전원 켜짐' : '전원 꺼짐'}</div>
+          <div class="badge ${device.running ? 'run' : 'idle'}">${runText(device)}</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">기기 종류</div>
+            <div class="value">${device.type === 'WASHER' ? '세탁기' : device.type === 'DRYER' ? '건조기' : device.type}</div>
+          </div>
+          <div class="stat">
+            <div class="label">남은 시간</div>
+            <div class="value">${device.remainingText}</div>
+          </div>
+        </div>
+      </section>
+    `;
+  }).join('');
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch('/api/public/status', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || '상태 조회 실패');
+    render(data.devices || []);
+    document.getElementById('updated').textContent = `업데이트 ${new Date().toLocaleTimeString('ko-KR')}`;
+  } catch (err) {
+    document.getElementById('content').className = 'error';
+    document.getElementById('content').textContent = err.message;
+    document.getElementById('updated').textContent = '조회 실패';
+  }
+}
+
+loadStatus();
+setInterval(loadStatus, 30000);
+</script>
+</body>
+</html>

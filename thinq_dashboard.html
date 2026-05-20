@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LG ThinQ Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f6f8;
+  color: #1a1a2e;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── 사이드바 ── */
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px; min-height: 100vh;
+  background: #1a1a2e;
+  padding: 28px 20px;
+  flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 4px 24px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  margin-bottom: 8px;
+}
+.brand-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: #c8f04a;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.brand-name { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+.brand-sub  { font-size: 10px; color: rgba(255,255,255,.4); margin-top: 1px; }
+
+.nav-label {
+  font-size: 10px; font-weight: 600; color: rgba(255,255,255,.3);
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 8px; margin-top: 8px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  cursor: pointer; transition: all .15s;
+  color: rgba(255,255,255,.5); font-size: 13px; font-weight: 500;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+.nav-item.active { background: rgba(200,240,74,.12); color: #c8f04a; }
+.nav-item .ni { font-size: 16px; width: 22px; text-align: center; }
+
+/* ── 메인 ── */
+.main { flex: 1; padding: 32px 36px; overflow-y: auto; }
+
+.page-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.page-title { font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+.page-title span { color: #7c6bea; }
+
+.conn-badge {
+  display: flex; align-items: center; gap: 7px;
+  background: #fff; border: 1px solid #e8e8f0;
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 12px; font-weight: 500; color: #888;
+  transition: all .3s;
+}
+.conn-badge.on { border-color: #c8f04a; color: #5a8a00; background: #f5ffe0; }
+.conn-badge .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #ccc; transition: background .3s;
+}
+.conn-badge.on .dot { background: #7cb800; animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 2px rgba(124,184,0,.2); }
+  50%      { box-shadow: 0 0 0 5px rgba(124,184,0,.05); }
+}
+
+/* ── 탭 ── */
+.tabs {
+  display: flex; gap: 6px;
+  background: #fff; border: 1px solid #e8e8f0;
+  border-radius: 14px; padding: 5px; margin-bottom: 24px;
+  width: fit-content;
+}
+.tab {
+  padding: 8px 20px; border-radius: 10px; border: none;
+  background: none; font-family: inherit; font-size: 13px;
+  font-weight: 500; color: #888; cursor: pointer; transition: all .15s;
+  white-space: nowrap;
+}
+.tab.active { background: #1a1a2e; color: #fff; }
+
+/* ── 카드 ── */
+.card {
+  background: #fff; border: 1px solid #e8e8f0;
+  border-radius: 16px; padding: 24px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: #888;
+  letter-spacing: .5px; text-transform: uppercase;
+  margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: ''; width: 3px; height: 14px;
+  background: #7c6bea; border-radius: 2px;
+}
+
+/* ── 설정 폼 ── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.fg label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 7px; }
+input, select {
+  width: 100%; background: #f8f9fb; border: 1.5px solid #e8e8f0;
+  border-radius: 10px; color: #1a1a2e; font-family: inherit;
+  font-size: 13px; padding: 10px 14px; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+input:focus, select:focus {
+  border-color: #7c6bea; box-shadow: 0 0 0 3px rgba(124,107,234,.1);
+  background: #fff;
+}
+input::placeholder { color: #bbb; }
+
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 20px; border-radius: 10px; border: none;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.btn-primary { background: #1a1a2e; color: #fff; }
+.btn-primary:hover { background: #2d2d4e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,26,46,.2); }
+.btn-accent { background: #c8f04a; color: #1a1a2e; }
+.btn-accent:hover { background: #b8e030; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(200,240,74,.3); }
+.btn-ghost { background: #f5f6f8; color: #666; border: 1.5px solid #e8e8f0; }
+.btn-ghost:hover { border-color: #ccc; color: #333; }
+.btn-danger { background: #fff0f3; color: #e03560; border: 1.5px solid #ffd6e0; }
+.btn-danger:hover { background: #ffe0e8; }
+
+/* ── 기기 카드 ── */
+.device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 16px; }
+
+.device-card {
+  background: #fff; border: 2px solid #e8e8f0;
+  border-radius: 16px; padding: 24px 20px;
+  cursor: pointer; transition: all .2s; position: relative;
+}
+.device-card:hover { border-color: #7c6bea; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(124,107,234,.12); }
+.device-card.sel { border-color: #7c6bea; background: #faf9ff; box-shadow: 0 8px 24px rgba(124,107,234,.15); }
+
+.device-card .sel-dot {
+  position: absolute; top: 14px; right: 14px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #7c6bea; opacity: 0; transition: opacity .2s;
+}
+.device-card.sel .sel-dot { opacity: 1; }
+
+.dc-icon { font-size: 38px; margin-bottom: 14px; }
+.dc-name { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-bottom: 5px; letter-spacing: -.2px; }
+.dc-type { font-size: 12px; font-weight: 600; color: #777; letter-spacing: .2px; }
+.dc-id   { font-size: 11px; color: #aaa; margin-top: 12px; font-family: inherit; }
+
+.dc-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 10px; padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.dc-status.run { background: #e8f8e8; color: #2a8a2a; }
+.dc-status.idle { background: #f5f5f5; color: #888; }
+.dc-power {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 8px; padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.dc-power.on { background: #eef7ff; color: #1865a8; }
+.dc-power.off { background: #f2f3f6; color: #7b8190; }
+
+/* ── 상태 카드 ── */
+.status-header {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+  padding-bottom: 20px; border-bottom: 1px solid #f0f0f5;
+}
+.status-device-icon { font-size: 42px; }
+.status-device-name { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+.status-device-type { font-size: 13px; color: #777; margin-top: 4px; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 14px; }
+
+.stat-item {
+  background: #f8f9fb; border-radius: 14px; padding: 18px;
+  border: 1.5px solid #eef0f5; transition: border-color .2s;
+}
+.stat-item:hover { border-color: #c8b8ff; }
+
+.stat-label {
+  font-size: 12px; font-weight: 600; color: #777;
+  letter-spacing: 0; margin-bottom: 9px;
+}
+.stat-value { font-size: 22px; font-weight: 700; color: #1a1a2e; line-height: 1; }
+.stat-unit  { font-size: 12px; font-weight: 500; color: #888; margin-left: 4px; }
+
+.stat-item.highlight { background: #f5f2ff; border-color: #c8b8ff; }
+.stat-item.highlight .stat-value { color: #7c6bea; }
+.stat-item.green { background: #f0faf0; border-color: #b8e8b8; }
+.stat-item.green .stat-value { color: #2a7a2a; }
+.stat-item.blue { background: #f0f4ff; border-color: #b8ccff; }
+.stat-item.blue .stat-value { color: #2a4aaa; }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px,1fr));
+  gap: 12px;
+}
+.setting-item {
+  background: #fff;
+  border: 1.5px solid #e7e9f1;
+  border-radius: 12px;
+  padding: 16px;
+}
+.setting-label {
+  color: #74788a;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.setting-value {
+  color: #18182f;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+}
+
+/* ── 진행바 ── */
+.progress-wrap { margin-top: 10px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+.progress-bar { background: #eef0f5; border-radius: 8px; height: 8px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #7c6bea, #a855f7); transition: width 1s ease; }
+
+/* ── 로그 ── */
+.log-box {
+  background: #1a1a2e; border-radius: 12px; padding: 18px;
+  font-family: 'Courier New', monospace; font-size: 12px;
+  line-height: 1.8; max-height: 280px; overflow-y: auto; color: #a0b0c0;
+}
+.log-box::-webkit-scrollbar { width: 4px; }
+.log-box::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+.le { margin-bottom: 2px; }
+.lt  { color: #445566; }
+.lok { color: #7cb800; }
+.ler { color: #e05060; }
+.lin { color: #60a0e0; }
+.lw  { color: #e0a020; }
+
+.tc { display: none; }
+.tc.active { display: block; }
+
+.empty { text-align: center; padding: 48px 20px; color: #aaa; }
+.empty .ic { font-size: 40px; margin-bottom: 14px; }
+.empty p { font-size: 14px; }
+
+.spin {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid #e8e8f0; border-top-color: #7c6bea;
+  border-radius: 50%; animation: sp .6s linear infinite; vertical-align: middle;
+}
+@keyframes sp { to { transform: rotate(360deg); } }
+
+hr { border: none; border-top: 1px solid #f0f0f5; margin: 20px 0; }
+
+.info-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #f0f4ff; border: 1.5px solid #c8d8ff;
+  border-radius: 12px; padding: 14px 16px;
+  font-size: 13px; color: #3a5aaa; line-height: 1.6; margin-bottom: 18px;
+}
+
+.section-divider {
+  font-size: 12px; font-weight: 700; color: #bbb;
+  letter-spacing: 1px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px; margin: 20px 0 14px;
+}
+.section-divider::after { content: ''; flex: 1; height: 1px; background: #f0f0f5; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { padding: 20px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">🏠</div>
+      <div>
+        <div class="brand-name">ThinQ</div>
+        <div class="brand-sub">Home Dashboard</div>
+      </div>
+    </div>
+
+    <div class="nav-label">메뉴</div>
+    <button class="nav-item active" onclick="navTo('devices')">
+      <span class="ni">📱</span> 기기 관리
+    </button>
+    <button class="nav-item" onclick="navTo('status')">
+      <span class="ni">📊</span> 상태 조회
+    </button>
+    <button class="nav-item" onclick="navTo('settings')">
+      <span class="ni">⚙️</span> 인증 설정
+    </button>
+    <button class="nav-item" onclick="navTo('log')">
+      <span class="ni">📋</span> 로그
+    </button>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <div class="page-head">
+      <div>
+        <div class="page-title">LG <span>ThinQ</span> 대시보드</div>
+      </div>
+      <div id="connBadge" class="conn-badge">
+        <div class="dot"></div>
+        <span id="connTxt">미연결</span>
+      </div>
+    </div>
+
+    <!-- 기기 관리 -->
+    <div id="page-devices" class="tc active">
+      <div class="card">
+        <div class="card-title">등록된 기기</div>
+        <div id="devList">
+          <div class="empty">
+            <div class="ic">📦</div>
+            <p>인증 설정 후 기기 목록을 불러오세요</p>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:20px">
+          <button class="btn btn-accent" onclick="loadDevices()">📡 기기 목록 불러오기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태 조회 -->
+    <div id="page-status" class="tc">
+      <div id="statusContent">
+        <div class="empty">
+          <div class="ic">🔍</div>
+          <p>기기 목록에서 기기를 선택하세요</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 인증 설정 -->
+    <div id="page-settings" class="tc">
+      <div class="card">
+        <div class="card-title">인증 정보</div>
+        <div class="info-banner">
+          ℹ️ PAT 발급:
+          <a href="https://connect-pat.lgthinq.com/login" target="_blank" style="color:#3a5aaa;font-weight:600">connect-pat.lgthinq.com</a>
+          &nbsp;·&nbsp;
+          개발자 사이트:
+          <a href="https://smartsolution.developer.lge.com/" target="_blank" style="color:#3a5aaa;font-weight:600">smartsolution.developer.lge.com</a>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>PAT (Personal Access Token)</label>
+            <input type="password" id="pat" placeholder="PAT를 입력하세요" />
+          </div>
+          <div class="fg">
+            <label>Client ID</label>
+            <input type="text" id="clientId" placeholder="등록 후 자동 입력됩니다" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>국가 코드</label>
+            <select id="country">
+              <option value="KR" selected>KR — 한국</option>
+              <option value="US">US — 미국</option>
+              <option value="JP">JP — 일본</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveConfig()">💾 설정 저장</button>
+          <button class="btn btn-accent"  onclick="registerClient()">⚡ 클라이언트 등록</button>
+          <button class="btn btn-danger"  onclick="clearConfig()">초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 로그 -->
+    <div id="page-log" class="tc">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">API 호출 로그</div>
+          <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="clearLog()">지우기</button>
+        </div>
+        <div class="log-box" id="logBox">
+          <div class="le"><span class="lin">[시스템]</span> 대시보드 초기화됨</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── 더미 데이터 ────────────────────────────────────────────
+const MOCK_DEVICES = [
+  {
+    deviceId: 'device-dryer-001',
+    deviceInfo: {
+      alias: '건조기',
+      deviceType: 'DRYER',
+      modelName: 'RH9V9PV2W',
+    }
+  },
+  {
+    deviceId: 'device-washer-001',
+    deviceInfo: {
+      alias: '드럼세탁기',
+      deviceType: 'WASHER',
+      modelName: 'F21VVD',
+    }
+  }
+];
+
+const MOCK_STATE = {
+  'device-washer-001': {
+    runState:        { currentState: 'RUNNING' },
+    powerState:      { currentState: 'ON' },
+    washerJobState:  { currentState: 'RINSING' },
+    operation:       { washerOperationMode: 'NORMAL' },
+    timer: {
+      relativeHourToStop: 0,
+      relativeMinuteToStop: 32,
+      remainHour: 0,
+      remainMinute: 32,
+      totalHour: 1,
+      totalMinute: 15,
+    },
+    cycle:           { cycleCount: 247 },
+    temperature: [
+      { locationName: 'WASH', targetTemperature: 40, unit: 'C' },
+      { locationName: 'RINSE', targetTemperature: 20, unit: 'C' },
+    ],
+    spin:            { spinSpeed: 1200 },
+    waterLevel:      { targetWaterLevel: 'HIGH' },
+  },
+  'device-dryer-001': {
+    runState:       { currentState: 'STANDBY' },
+    powerState:     { currentState: 'ON' },
+    dryerJobState:  { currentState: 'NONE' },
+    operation:      { dryerOperationMode: 'NORMAL' },
+    timer: {
+      remainHour: 0,
+      remainMinute: 0,
+      totalHour: 0,
+      totalMinute: 0,
+    },
+    temperature: [
+      { locationName: 'DRY', targetTemperature: 60, unit: 'C' },
+    ],
+    dryLevel:       { targetDryLevel: 'NORMAL' },
+    cycle:          { cycleCount: 183 },
+  }
+};
+
+// ── 상태 ──────────────────────────────────────────────────
+let selectedDevice = null;
+let deviceStates = {};
+let demoMode = false;
+
+// ── 초기화 ────────────────────────────────────────────────
+window.onload = async () => {
+  try {
+    const cfg = await call('GET', '/api/config');
+    if (cfg) {
+      if (cfg.clientId) document.getElementById('clientId').value = cfg.clientId;
+      document.getElementById('country').value = cfg.country || 'KR';
+      if (cfg.hasPat) {
+        document.getElementById('pat').placeholder = '저장됨 (변경 시 입력)';
+        setConn(true);
+      }
+      log('서버 연결 성공', 'ok');
+    }
+  } catch {
+    log('Flask 서버 미연결 — 데모 모드로 동작합니다', 'w');
+  }
+};
+
+// ── 헬퍼 ──────────────────────────────────────────────────
+function log(msg, type='in') {
+  const box = document.getElementById('logBox');
+  const t = new Date().toLocaleTimeString('ko-KR');
+  const d = document.createElement('div');
+  d.className = 'le';
+  d.innerHTML = `<span class="lt">[${t}]</span> <span class="l${type}">${msg}</span>`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog() { document.getElementById('logBox').innerHTML = ''; log('로그 초기화'); }
+
+function setConn(on) {
+  const b = document.getElementById('connBadge');
+  const t = document.getElementById('connTxt');
+  if (on) { b.classList.add('on'); t.textContent = '연결됨'; }
+  else    { b.classList.remove('on'); t.textContent = '미연결'; }
+}
+
+function devIcon(t='') {
+  t = t.toUpperCase();
+  if (t === 'WASHER') return '🫧';
+  if (t === 'DRYER')  return '🌀';
+  if (t.includes('AIR'))    return '❄️';
+  if (t.includes('REFRIG')) return '🧊';
+  if (t.includes('OVEN'))   return '🍳';
+  return '📦';
+}
+
+function normalizedType(device) {
+  const info = device.deviceInfo ?? {};
+  const rawType = String(info.deviceType ?? device.deviceType ?? device.type ?? '').toUpperCase();
+  const alias = String(info.alias ?? info.name ?? device.alias ?? device.name ?? '').toUpperCase();
+  const model = String(info.modelName ?? device.modelName ?? '').toUpperCase();
+  const text = `${rawType} ${alias} ${model}`;
+  if (/^RH[A-Z0-9]/.test(model) || text.includes('DRYER') || text.includes('DRY') || text.includes('건조')) return 'DRYER';
+  if (/^F[A-Z0-9]/.test(model) || text.includes('WASHER') || text.includes('WASH') || text.includes('세탁')) return 'WASHER';
+  return rawType;
+}
+
+function deviceIdOf(device) {
+  return device.deviceId ?? device.id ?? device.device_id ?? device.deviceID ?? '-';
+}
+
+function deviceNameOf(device) {
+  const info = device.deviceInfo ?? {};
+  return info.alias ?? info.name ?? device.alias ?? device.name ?? device.nickName ?? '기기';
+}
+
+function deviceModelOf(device) {
+  const info = device.deviceInfo ?? {};
+  return info.modelName ?? device.modelName ?? device.model ?? '';
+}
+
+function extractDeviceList(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+  for (const key of ['devices', 'item', 'items', 'list', 'result', 'data']) {
+    const found = extractDeviceList(data[key]);
+    if (found.length) return found;
+  }
+  return [];
+}
+
+function normalizeDeviceState(state) {
+  if (Array.isArray(state)) {
+    return state.reduce((merged, item) => ({ ...merged, ...(item ?? {}) }), {});
+  }
+  return state ?? {};
+}
+
+function labelValue(map, value) {
+  return map[value] ?? value ?? '-';
+}
+
+function operationLabel(type, state) {
+  const op = state.operation ?? {};
+  const value = type === 'WASHER' ? op.washerOperationMode : op.dryerOperationMode;
+  return labelValue({ NORMAL:'표준', AI:'AI 맞춤', QUICK:'스피드', SILENT:'조용조용' }, value);
+}
+
+function collectStateText(value, out=[]) {
+  if (value == null) return out;
+  if (typeof value !== 'object') {
+    out.push(String(value).toUpperCase());
+    return out;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(v => collectStateText(v, out));
+    return out;
+  }
+  Object.values(value).forEach(v => collectStateText(v, out));
+  return out;
+}
+
+function findDeepValue(obj, names) {
+  if (!obj || typeof obj !== 'object') return null;
+  for (const [key, value] of Object.entries(obj)) {
+    if (names.includes(key)) return value;
+    const nested = findDeepValue(value, names);
+    if (nested != null) return nested;
+  }
+  return null;
+}
+
+function runStateValue(state) {
+  const direct = state.runState?.currentState
+    ?? findDeepValue(state, ['currentState', 'operationState', 'powerState', 'onlineState']);
+  if (direct && typeof direct === 'object') {
+    return direct.currentState ?? direct.value ?? direct.state ?? null;
+  }
+  return direct;
+}
+
+function powerStateValue(state) {
+  const direct = state.powerState?.currentState
+    ?? state.power?.currentState
+    ?? state.power?.value
+    ?? findDeepValue(state, ['powerState', 'power', 'airState.operation', 'operation']);
+  if (direct && typeof direct === 'object') {
+    return direct.currentState ?? direct.value ?? direct.state ?? null;
+  }
+  return direct;
+}
+
+function isPowerOn(state) {
+  const direct = String(powerStateValue(state) ?? '').toUpperCase();
+  const allText = collectStateText(state).join(' ');
+  const onWords = ['POWER_ON', 'POWERON', 'INITIAL', 'RUNNING', 'WORKING', 'WASHING', 'RINSING', 'SPINNING', 'DRYING'];
+  const offWords = ['OFF', 'POWER_OFF', 'POWEROFF'];
+  if (direct === 'ON') return true;
+  if (onWords.some(word => direct === word || direct.includes(word) || allText.includes(word))) return true;
+  if (offWords.some(word => direct === word || direct.includes(word))) return false;
+  return isDeviceRunning(state);
+}
+
+function powerLabel(state) {
+  return isPowerOn(state) ? '전원 켜짐' : '전원 꺼짐';
+}
+
+function isDeviceRunning(state) {
+  const direct = String(runStateValue(state) ?? '').toUpperCase();
+  const allText = collectStateText(state).join(' ');
+  const runningWords = ['RUNNING', 'WORKING', 'PROCESSING', 'WASHING', 'RINSING', 'SPINNING', 'DRYING', 'COOLING'];
+  const idleWords = ['STANDBY', 'POWER_OFF', 'POWEROFF', 'OFF', 'COMPLETE', 'NONE', 'IDLE'];
+  if (runningWords.some(word => direct.includes(word) || allText.includes(word))) return true;
+  if (idleWords.some(word => direct.includes(word))) return false;
+  return false;
+}
+
+function jobStateValue(type, state) {
+  const direct = type === 'WASHER'
+    ? state.washerJobState?.currentState
+    : state.dryerJobState?.currentState;
+  return direct ?? findDeepValue(state, ['currentState', 'jobState', 'processState', 'courseState']);
+}
+
+async function call(method, path, body=null) {
+  log(`${method} ${path}`, 'in');
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok || data.error) { log(`오류: ${data.error || res.status}`, 'er'); return null; }
+  log('응답 OK', 'ok');
+  return data;
+}
+
+// ── 네비 ──────────────────────────────────────────────────
+function navTo(name) {
+  document.querySelectorAll('.tc').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  const idx = { devices:0, status:1, settings:2, log:3 }[name] ?? 0;
+  document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+}
+
+// ── 설정 ──────────────────────────────────────────────────
+async function saveConfig() {
+  const pat = document.getElementById('pat').value.trim();
+  const clientId = document.getElementById('clientId').value.trim();
+  const country  = document.getElementById('country').value;
+  const body = { country };
+  if (pat) body.pat = pat;
+  if (clientId) body.clientId = clientId;
+  const res = await call('POST', '/api/config', body);
+  if (res) { setConn(true); log('설정 저장 완료', 'ok'); }
+}
+
+function clearConfig() {
+  document.getElementById('pat').value = '';
+  document.getElementById('clientId').value = '';
+  call('POST', '/api/config', { pat:'', clientId:'' });
+  setConn(false); log('설정 초기화', 'w');
+}
+
+async function registerClient() {
+  await saveConfig();
+  const res = await call('POST', '/api/client/register');
+  if (res?.clientId) {
+    document.getElementById('clientId').value = res.clientId;
+    log(`등록 완료: ${res.clientId}`, 'ok'); setConn(true);
+  }
+}
+
+// ── 기기 목록 ─────────────────────────────────────────────
+async function loadDevices() {
+  document.getElementById('devList').innerHTML =
+    '<div class="empty"><div class="spin"></div></div>';
+
+  let devices = null;
+  try {
+    const res = await call('GET', '/api/devices');
+    const found = extractDeviceList(res?.devices);
+    if (found.length) devices = found;
+  } catch {}
+
+  // API 실패 시 더미 데이터
+  if (!devices) {
+    log('데모 데이터로 표시합니다', 'w');
+    devices = MOCK_DEVICES;
+    demoMode = true;
+  } else {
+    demoMode = false;
+  }
+
+  await Promise.all(devices.map(async d => {
+    const id = deviceIdOf(d);
+    if (id === '-' || deviceStates[id]) return;
+    deviceStates[id] = await fetchDeviceState(id);
+  }));
+  renderDevices(devices);
+  setConn(true);
+}
+
+async function fetchDeviceState(id) {
+  try {
+    const res = await call('GET', `/api/devices/${id}/state`);
+    if (res?.state) return normalizeDeviceState(res.state);
+  } catch {}
+  return demoMode ? (MOCK_STATE[id] ?? {}) : {};
+}
+
+function renderDevices(devices) {
+  const html = `<div class="device-grid">${devices.map(d => {
+    const id   = deviceIdOf(d);
+    const name = deviceNameOf(d);
+    const type = normalizedType(d);
+    const model= deviceModelOf(d);
+    const stateData = deviceStates[id] ?? (demoMode ? MOCK_STATE[id] : null);
+    const isRunning = stateData ? isDeviceRunning(stateData) : false;
+    const statusText = stateData ? (isRunning ? '● 작동 중' : '● 대기 중') : '● 상태 조회 필요';
+    const powerOn = stateData ? isPowerOn(stateData) : false;
+    const powerText = stateData ? powerLabel(stateData) : '전원 확인 필요';
+    return `
+      <div class="device-card${deviceIdOf(selectedDevice ?? {})===id?' sel':''}" id="dc-${id}" onclick="pickDevice(${JSON.stringify(d).replace(/"/g,'&quot;')})">
+        <div class="sel-dot"></div>
+        <div class="dc-icon">${devIcon(type)}</div>
+        <div class="dc-name">${name}</div>
+        <div class="dc-type">${type}</div>
+        <div class="dc-status ${isRunning?'run':'idle'}">
+          ${statusText}
+        </div>
+        <div class="dc-power ${powerOn?'on':'off'}">
+          ${powerOn ? '⏻' : '○'} ${powerText}
+        </div>
+        <div class="dc-id">${model}</div>
+      </div>`;
+  }).join('')}</div>`;
+  document.getElementById('devList').innerHTML = html;
+}
+
+function pickDevice(d) {
+  selectedDevice = d;
+  document.querySelectorAll('.device-card').forEach(c => c.classList.remove('sel'));
+  document.getElementById(`dc-${deviceIdOf(d)}`)?.classList.add('sel');
+  log(`기기 선택: ${deviceNameOf(d)} (${deviceIdOf(d)})`, 'in');
+  showStatus(d);
+  navTo('status');
+}
+
+// ── 상태 조회 ─────────────────────────────────────────────
+async function showStatus(device) {
+  const id = deviceIdOf(device);
+
+  document.getElementById('statusContent').innerHTML =
+    '<div class="empty"><div class="spin"></div></div>';
+
+  const state = await fetchDeviceState(id);
+  deviceStates[id] = state;
+
+  document.getElementById('statusContent').innerHTML = renderStatus(device, state);
+}
+
+function renderStatus(device, state) {
+  state = normalizeDeviceState(state);
+  const info = device.deviceInfo ?? {};
+  const name = deviceNameOf(device);
+  const type = normalizedType(device);
+  const isRunning = isDeviceRunning(state);
+  const powerOn = isPowerOn(state);
+
+  const jobState = jobStateValue(type, state);
+
+  const jobLabel = {
+    WASHING: '세탁 중', RINSING: '헹굼 중', SPINNING: '탈수 중',
+    DRYING: '건조 중', COOLING: '냉각 중', NONE: '없음'
+  }[jobState] ?? jobState ?? '-';
+
+  const remain = state.timer
+    ? `${state.timer.remainHour}시간 ${state.timer.remainMinute}분`
+    : '-';
+  const total = state.timer?.totalMinute
+    ? `${state.timer.totalHour}시간 ${state.timer.totalMinute}분`
+    : '-';
+
+  const progress = (state.timer?.totalMinute > 0)
+    ? Math.max(0, Math.min(100, Math.round(
+        (1 - (state.timer.remainHour*60+state.timer.remainMinute) /
+              (state.timer.totalHour*60+state.timer.totalMinute)) * 100
+      )))
+    : 0;
+
+  const temps = state.temperature ?? [];
+  const spin  = state.spin?.spinSpeed ?? null;
+  const settingRows = [
+    ['운전 모드', operationLabel(type, state)],
+    ...temps.map(t => [
+      {WASH:'세탁 온도', RINSE:'헹굼 온도', DRY:'건조 온도'}[t.locationName] ?? t.locationName,
+      `${t.targetTemperature}°${t.unit ?? 'C'}`
+    ]),
+    ...(spin ? [['탈수 속도', `${spin} RPM`]] : []),
+    ...(state.waterLevel ? [[
+      '수위',
+      labelValue({HIGH:'높음', MEDIUM:'중간', LOW:'낮음'}, state.waterLevel.targetWaterLevel)
+    ]] : []),
+    ...(state.dryLevel ? [[
+      '건조 강도',
+      labelValue({NORMAL:'표준', STRONG:'강함', WEAK:'약함'}, state.dryLevel.targetDryLevel)
+    ]] : []),
+  ];
+
+  return `
+    <div class="card">
+      <div class="status-header">
+        <div class="status-device-icon">${devIcon(type)}</div>
+        <div>
+          <div class="status-device-name">${name}</div>
+          <div class="status-device-type">${type} · ${deviceModelOf(device)}</div>
+        </div>
+        <div style="margin-left:auto">
+          <div class="dc-status ${isRunning?'run':'idle'}" style="font-size:13px;padding:7px 16px">
+            ${isRunning ? '● 작동 중' : '● 대기 중'}
+          </div>
+          <div class="dc-power ${powerOn?'on':'off'}" style="font-size:13px;padding:7px 16px">
+            ${powerOn ? '⏻ 전원 켜짐' : '○ 전원 꺼짐'}
+          </div>
+        </div>
+      </div>
+
+      ${isRunning ? `
+        <div class="progress-wrap" style="margin-bottom:24px">
+          <div class="progress-label">
+            <span>진행률</span>
+            <span>${progress}% · 남은 시간 ${remain}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${progress}%"></div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="section-divider">현재 상태</div>
+      <div class="stat-grid">
+
+        <div class="stat-item blue">
+          <div class="stat-label">전원 상태</div>
+          <div class="stat-value" style="font-size:16px">${powerLabel(state)}</div>
+        </div>
+
+        <div class="stat-item highlight">
+          <div class="stat-label">동작 상태</div>
+          <div class="stat-value" style="font-size:16px">${
+            { RUNNING:'실행 중', STANDBY:'대기', INITIAL:'대기', PAUSE:'일시정지', COMPLETE:'완료' }
+            [runStateValue(state)] ?? (isRunning ? '실행 중' : runStateValue(state) ?? '-')
+          }</div>
+        </div>
+
+        ${jobState && jobState !== 'NONE' ? `
+        <div class="stat-item highlight">
+          <div class="stat-label">세탁 단계</div>
+          <div class="stat-value" style="font-size:16px">${jobLabel}</div>
+        </div>` : ''}
+
+        ${isRunning ? `
+        <div class="stat-item green">
+          <div class="stat-label">남은 시간</div>
+          <div class="stat-value" style="font-size:18px">${remain}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">총 소요 시간</div>
+          <div class="stat-value" style="font-size:18px">${total}</div>
+        </div>` : ''}
+
+        ${temps.map(t => `
+        <div class="stat-item blue">
+          <div class="stat-label">${
+            {WASH:'세탁 온도', RINSE:'헹굼 온도', DRY:'건조 온도'}[t.locationName] ?? t.locationName
+          }</div>
+          <div class="stat-value">${t.targetTemperature}<span class="stat-unit">°C</span></div>
+        </div>`).join('')}
+
+        ${spin ? `
+        <div class="stat-item">
+          <div class="stat-label">탈수 속도</div>
+          <div class="stat-value">${spin}<span class="stat-unit">RPM</span></div>
+        </div>` : ''}
+
+        ${state.waterLevel ? `
+        <div class="stat-item">
+          <div class="stat-label">수위</div>
+          <div class="stat-value" style="font-size:16px">${
+            {HIGH:'높음', MEDIUM:'중간', LOW:'낮음'}[state.waterLevel.targetWaterLevel]
+            ?? state.waterLevel.targetWaterLevel
+          }</div>
+        </div>` : ''}
+
+        ${state.dryLevel ? `
+        <div class="stat-item">
+          <div class="stat-label">건조 강도</div>
+          <div class="stat-value" style="font-size:16px">${
+            {NORMAL:'표준', STRONG:'강함', WEAK:'약함'}[state.dryLevel.targetDryLevel]
+            ?? state.dryLevel.targetDryLevel
+          }</div>
+        </div>` : ''}
+
+        ${state.cycle ? `
+        <div class="stat-item">
+          <div class="stat-label">누적 사용 횟수</div>
+          <div class="stat-value">${state.cycle.cycleCount}<span class="stat-unit">회</span></div>
+        </div>` : ''}
+
+      </div>
+
+      <div class="section-divider">설정</div>
+      <div class="settings-grid">
+        ${settingRows.map(([label, value]) => `
+          <div class="setting-item">
+            <div class="setting-label">${label}</div>
+            <div class="setting-value">${value}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="btn-row" style="margin-top:24px">
+        <button class="btn btn-ghost" onclick="showStatus(selectedDevice)">🔄 새로고침</button>
+        <button class="btn btn-ghost" onclick="navTo('devices')">← 목록으로</button>
+      </div>
+    </div>`;
+}
+
+// ── 설정 저장 단축 ─────────────────────────────────────────
+async function call(method, path, body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok || data.error) { log(`오류: ${data.error || res.status}`, 'er'); return null; }
+    log(`${method} ${path} → OK`, 'ok');
+    return data;
+  } catch(e) {
+    log(`${method} ${path} → 서버 미연결`, 'w');
+    return null;
+  }
+}
+</script>
+</body>
+</html>
