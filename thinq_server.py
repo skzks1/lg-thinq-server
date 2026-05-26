@@ -237,6 +237,22 @@ def register_client():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── 알림 테스트 API ────────────────────────────────────────
+@app.route("/api/notify/kakao", methods=["POST"])
+def notify_kakao():
+    data = request.json or {}
+    message = data.get("message", "테스트 알림")
+    device_type = data.get("device_type", "")
+
+    tip = get_tip(device_type)
+    full_message = message + tip
+
+    try:
+        send_kakao_message(full_message)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── 기기 목록 ──────────────────────────────────────────────
 @app.route("/api/devices", methods=["GET"])
 def get_devices():
@@ -327,29 +343,3 @@ if __name__ == "__main__":
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-
-import requests
-import json
-
-def send_kakao_message():
-
-    url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
-
-    headers = {
-        "Authorization": f"Bearer {KAKAO_ACCESS_TOKEN}"
-    }
-
-    data = {
-        "template_object": json.dumps({
-            "object_type": "text",
-            "text": "🧺 세탁 알림 테스트입니다!",
-            "link": {
-                "web_url": "https://lg-thinq-server.onrender.com"
-            }
-        })
-    }
-
-    response = requests.post(url, headers=headers, data=data)
-
-    print(response.text)

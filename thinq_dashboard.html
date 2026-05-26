@@ -323,6 +323,9 @@ hr { border: none; border-top: 1px solid #f0f0f5; margin: 20px 0; }
     <button class="nav-item" onclick="navTo('settings')">
       <span class="ni">⚙️</span> 인증 설정
     </button>
+    <button class="nav-item" onclick="navTo('notify')">
+      <span class="ni">🔔</span> 알림 테스트
+    </button>
     <button class="nav-item" onclick="navTo('log')">
       <span class="ni">📋</span> 로그
     </button>
@@ -404,6 +407,63 @@ hr { border: none; border-top: 1px solid #f0f0f5; margin: 20px 0; }
           <button class="btn btn-danger"  onclick="clearConfig()">초기화</button>
         </div>
       </div>
+    </div>
+
+    <!-- 알림 테스트 -->
+    <div id="page-notify" class="tc">
+
+      <!-- 브라우저 알림 -->
+      <div class="card">
+        <div class="card-title">🔔 브라우저 알림 (Web Push)</div>
+        <p style="font-size:13px;color:#666;margin-bottom:18px;line-height:1.7">
+          브라우저 알림을 허용하면 탭이 백그라운드이거나 화면이 꺼져 있어도 알림이 옵니다.<br>
+          <strong>휴대폰 크롬</strong>에서 이 페이지를 열고 허용하면 폰으로 알림이 와요.
+        </p>
+        <div id="notifPermStatus" style="margin-bottom:16px"></div>
+        <div class="btn-row">
+          <button class="btn btn-accent" onclick="testBrowserNotif()">🔔 브라우저 알림 테스트</button>
+          <button class="btn btn-ghost"  onclick="checkNotifPerm()">권한 확인</button>
+        </div>
+      </div>
+
+      <!-- 카카오 알림 -->
+      <div class="card">
+        <div class="card-title">💬 카카오톡 알림</div>
+        <p style="font-size:13px;color:#666;margin-bottom:18px;line-height:1.7">
+          서버에서 카카오 나에게 보내기로 메시지를 발송합니다.<br>
+          카카오 액세스 토큰이 서버에 설정되어 있어야 동작합니다.
+        </p>
+        <div class="form-row" style="margin-bottom:14px">
+          <div class="fg">
+            <label>메시지 내용</label>
+            <input type="text" id="kakaoMsg" value="🧺 세탁이 완료됐어요! 빨래를 꺼내주세요 😊" />
+          </div>
+          <div class="fg">
+            <label>기기 종류 (팁 포함용)</label>
+            <select id="kakaoDeviceType">
+              <option value="washer">세탁기</option>
+              <option value="dryer">건조기</option>
+              <option value="">없음</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-accent" onclick="testKakao()">💬 카카오 알림 테스트</button>
+        </div>
+        <div id="kakaoResult" style="margin-top:14px;font-size:13px;display:none"></div>
+      </div>
+
+      <!-- 동시 발송 -->
+      <div class="card">
+        <div class="card-title">🚀 전체 알림 한번에 테스트</div>
+        <p style="font-size:13px;color:#666;margin-bottom:18px;line-height:1.7">
+          브라우저 알림 + 카카오 알림을 동시에 발송해서 실제 완료 상황을 시뮬레이션합니다.
+        </p>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="testAll()">🧪 전체 알림 동시 발송</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- 로그 -->
@@ -664,24 +724,15 @@ function jobStateValue(type, state) {
   return direct ?? findDeepValue(state, ['currentState', 'jobState', 'processState', 'courseState']);
 }
 
-async function call(method, path, body=null) {
-  log(`${method} ${path}`, 'in');
-  const opts = { method, headers: {'Content-Type':'application/json'} };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
-  const data = await res.json();
-  if (!res.ok || data.error) { log(`오류: ${data.error || res.status}`, 'er'); return null; }
-  log('응답 OK', 'ok');
-  return data;
-}
 
 // ── 네비 ──────────────────────────────────────────────────
 function navTo(name) {
   document.querySelectorAll('.tc').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`page-${name}`).classList.add('active');
-  const idx = { devices:0, status:1, settings:2, log:3 }[name] ?? 0;
+  const idx = { devices:0, status:1, settings:2, notify:3, log:4 }[name] ?? 0;
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if (name === 'notify') checkNotifPerm();
 }
 
 // ── 설정 ──────────────────────────────────────────────────
@@ -968,8 +1019,91 @@ function renderStatus(device, state) {
     </div>`;
 }
 
-// ── 설정 저장 단축 ─────────────────────────────────────────
+// ── 알림 테스트 ───────────────────────────────────────────
+
+function checkNotifPerm() {
+  const el = document.getElementById('notifPermStatus');
+  if (!el) return;
+  if (!('Notification' in window)) {
+    el.innerHTML = '<span style="color:#c43b55;font-weight:600">❌ 이 브라우저는 알림을 지원하지 않습니다.</span>';
+    return;
+  }
+  const perm = Notification.permission;
+  const map = {
+    granted: '<span style="color:#2a8a2a;font-weight:600">✅ 알림 허용됨 — 테스트 버튼을 누르면 즉시 발송됩니다.</span>',
+    denied:  '<span style="color:#c43b55;font-weight:600">🚫 알림 차단됨 — 브라우저 주소창 옆 자물쇠 아이콘에서 허용으로 바꿔주세요.</span>',
+    default: '<span style="color:#b07000;font-weight:600">⚠️ 아직 허용 안 됨 — 테스트 버튼을 누르면 권한 요청 팝업이 뜹니다.</span>',
+  };
+  el.innerHTML = map[perm] ?? '';
+}
+
+async function testBrowserNotif() {
+  if (!('Notification' in window)) {
+    alert('이 브라우저는 알림을 지원하지 않습니다.');
+    return;
+  }
+  if (Notification.permission !== 'granted') {
+    const result = await Notification.requestPermission();
+    checkNotifPerm();
+    if (result !== 'granted') { log('브라우저 알림 권한 거부됨', 'w'); return; }
+  }
+  new Notification('🫧 세탁 완료!', {
+    body: '드럼세탁기 세탁이 끝났습니다. 빨리 꺼내세요 😊',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    vibrate: [200, 100, 200],
+    requireInteraction: true,
+    tag: 'thinq-test',
+  });
+  log('브라우저 알림 테스트 발송', 'ok');
+}
+
+async function testKakao() {
+  const msg  = document.getElementById('kakaoMsg').value.trim() || '테스트 알림';
+  const dtype = document.getElementById('kakaoDeviceType').value;
+  const resultEl = document.getElementById('kakaoResult');
+  resultEl.style.display = 'none';
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '발송 중...';
+
+  try {
+    const res = await fetch('/api/notify/kakao', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg, device_type: dtype }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      resultEl.style.display = '';
+      resultEl.innerHTML = '<span style="color:#2a8a2a;font-weight:600">✅ 카카오톡 발송 성공!</span>';
+      log('카카오 알림 테스트 발송 성공', 'ok');
+    } else {
+      resultEl.style.display = '';
+      resultEl.innerHTML = `<span style="color:#c43b55;font-weight:600">❌ 실패: ${data.error ?? '알 수 없는 오류'}</span>`;
+      log(`카카오 알림 실패: ${data.error}`, 'er');
+    }
+  } catch(e) {
+    resultEl.style.display = '';
+    resultEl.innerHTML = '<span style="color:#c43b55;font-weight:600">❌ 서버 연결 실패</span>';
+    log('카카오 알림 서버 미연결', 'w');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '💬 카카오 알림 테스트';
+}
+
+async function testAll() {
+  log('전체 알림 테스트 시작', 'in');
+  testBrowserNotif();
+  await testKakao();
+  log('전체 알림 테스트 완료', 'ok');
+}
+
+// ── API 호출 헬퍼 ──────────────────────────────────────────
 async function call(method, path, body=null) {
+  log(`${method} ${path}`, 'in');
   const opts = { method, headers: {'Content-Type':'application/json'} };
   if (body) opts.body = JSON.stringify(body);
   try {
