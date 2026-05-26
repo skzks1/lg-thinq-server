@@ -37,6 +37,7 @@ def send_kakao_message(message):
     }
 
     requests.post(url, headers=headers, data=data)
+KAKAO_ACCESS_TOKEN = "Sl_MVCaCwmlCPjtexNX5QCYaT26NrZgcAAAAAQoNDSEAAAGeRmyyNP8D-j8FVvr5"
 
 
 
@@ -326,3 +327,29 @@ if __name__ == "__main__":
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+
+import requests
+import json
+
+def send_kakao_message():
+
+    url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
+
+    headers = {
+        "Authorization": f"Bearer {KAKAO_ACCESS_TOKEN}"
+    }
+
+    data = {
+        "template_object": json.dumps({
+            "object_type": "text",
+            "text": "🧺 세탁 알림 테스트입니다!",
+            "link": {
+                "web_url": "https://lg-thinq-server.onrender.com"
+            }
+        })
+    }
+
+    response = requests.post(url, headers=headers, data=data)
+
+    print(response.text)
