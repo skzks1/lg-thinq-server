@@ -9,12 +9,14 @@ import asyncio
 import uuid
 import os
 import json
-from flask import Flask, jsonify, request, send_from_directory
+import hashlib
+import secrets
+from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for
+from functools import wraps
 from aiohttp import ClientSession
 from thinqconnect import ThinQApi
 import random
 import requests
-import json
 
 
 def send_kakao_message(message):
@@ -73,8 +75,37 @@ complete_sent = False
 
 
 app = Flask(__name__, static_folder=".")
-PUBLIC_SITE_URL = "https://injedormitory.dothome.co.kr"
+PUBLIC_SITE_URL = "https://lg-thinq-server.onrender.com"
 CONFIG_FILE = "thinq_config.json"
+
+# ── 관리자 인증 ────────────────────────────────────────────
+# 비밀번호는 환경변수 ADMIN_PASSWORD로 설정 (기본값: admin1234)
+# Render 대시보드 → Environment → ADMIN_PASSWORD 에 설정하세요
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+
+ADMIN_PASSWORD_HASH = None
+
+def _hash_pw(pw: str) -> str:
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+def _get_admin_pw_hash() -> str:
+    global ADMIN_PASSWORD_HASH
+    if ADMIN_PASSWORD_HASH is None:
+        raw = os.environ.get("ADMIN_PASSWORD", "admin1234")
+        ADMIN_PASSWORD_HASH = _hash_pw(raw)
+    return ADMIN_PASSWORD_HASH
+
+def admin_required(f):
+    """관리자 로그인이 필요한 라우트에 붙이는 데코레이터"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            # API 요청이면 JSON 에러, 페이지 요청이면 로그인으로 리다이렉트
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "관리자 인증이 필요합니다", "redirect": "/login"}), 401
+            return redirect(url_for("login_page", next=request.path))
+        return f(*args, **kwargs)
+    return decorated
 
 # ── 설정 ──────────────────────────────────────────────────
 CONFIG = {
@@ -128,11 +159,38 @@ def index():
 def oauth():
     return "카카오 인증 성공!"
 
+@app.route("/login")
+def login_page():
+    if session.get("admin_logged_in"):
+        return redirect(request.args.get("next", "/admin"))
+    return send_from_directory(".", "thinq_login.html")
+
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    data = request.json or {}
+    pw = data.get("password", "")
+    if _hash_pw(pw) == _get_admin_pw_hash():
+        session["admin_logged_in"] = True
+        session.permanent = True
+        return jsonify({"ok": True})
+    return jsonify({"error": "비밀번호가 올바르지 않습니다"}), 401
+
+@app.route("/api/admin/logout", methods=["POST"])
+def admin_logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+@app.route("/api/admin/check", methods=["GET"])
+def admin_check():
+    return jsonify({"loggedIn": bool(session.get("admin_logged_in"))})
+
 @app.route("/setup")
+@admin_required
 def setup():
     return send_from_directory(".", "thinq_setup.html")
 
 @app.route("/admin")
+@admin_required
 def admin():
     return send_from_directory(".", "thinq_dashboard.html")
 
@@ -197,6 +255,7 @@ def _public_device(device, state):
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
 @app.route("/api/config", methods=["GET"])
+@admin_required
 def get_config():
     return jsonify({
         "hasPat":   bool(CONFIG["pat"]),
@@ -207,6 +266,7 @@ def get_config():
 
 # ── 기기 등록 (기기 추가 페이지에서 호출) ─────────────────
 @app.route("/api/devices/register", methods=["POST"])
+@admin_required
 def register_device():
     data = request.json or {}
     device_id = data.get("deviceId") or data.get("id")
@@ -238,6 +298,7 @@ def register_device():
 
 # ── 기기 삭제 ──────────────────────────────────────────────
 @app.route("/api/devices/register/<device_id>", methods=["DELETE"])
+@admin_required
 def unregister_device(device_id):
     devices = CONFIG.get("devices", [])
     before = len(devices)
@@ -248,10 +309,12 @@ def unregister_device(device_id):
 
 # ── 등록된 기기 목록 ──────────────────────────────────────
 @app.route("/api/devices/registered", methods=["GET"])
+@admin_required
 def get_registered_devices():
     return jsonify({"ok": True, "devices": CONFIG.get("devices", [])})
 
 @app.route("/api/config", methods=["POST"])
+@admin_required
 def set_config():
     data = request.json or {}
     if "pat"      in data: CONFIG["pat"]       = data["pat"]
@@ -263,6 +326,7 @@ def set_config():
 
 # ── 클라이언트 등록 ────────────────────────────────────────
 @app.route("/api/client/register", methods=["POST"])
+@admin_required
 def register_client():
     if not CONFIG["pat"]:
         return jsonify({"error": "PAT가 설정되지 않았습니다"}), 400
@@ -293,6 +357,7 @@ def register_client():
 
 # ── 알림 테스트 API ────────────────────────────────────────
 @app.route("/api/notify/kakao", methods=["POST"])
+@admin_required
 def notify_kakao():
     data = request.json or {}
     message = data.get("message", "테스트 알림")
@@ -309,6 +374,7 @@ def notify_kakao():
 
 # ── 기기 목록 ──────────────────────────────────────────────
 @app.route("/api/devices", methods=["GET"])
+@admin_required
 def get_devices():
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "PAT와 Client ID를 먼저 설정하세요"}), 400
@@ -325,6 +391,7 @@ def get_devices():
 
 # ── 기기 상태 조회 ─────────────────────────────────────────
 @app.route("/api/devices/<device_id>/state", methods=["GET"])
+@admin_required
 def get_device_state(device_id):
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "PAT와 Client ID를 먼저 설정하세요"}), 400
@@ -370,6 +437,7 @@ def public_status():
 
 # ── 기기 제어 ──────────────────────────────────────────────
 @app.route("/api/devices/<device_id>/control", methods=["POST"])
+@admin_required
 def control_device(device_id):
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "PAT와 Client ID를 먼저 설정하세요"}), 400

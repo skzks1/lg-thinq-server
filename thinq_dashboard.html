@@ -329,6 +329,11 @@ hr { border: none; border-top: 1px solid #f0f0f5; margin: 20px 0; }
     <button class="nav-item" onclick="navTo('log')">
       <span class="ni">📋</span> 로그
     </button>
+
+    <div style="flex:1"></div>
+    <button class="nav-item" onclick="adminLogout()" style="color:rgba(255,100,100,.6);margin-top:8px">
+      <span class="ni">🚪</span> 로그아웃
+    </button>
   </aside>
 
   <!-- 메인 -->
@@ -338,9 +343,14 @@ hr { border: none; border-top: 1px solid #f0f0f5; margin: 20px 0; }
       <div>
         <div class="page-title">LG <span>ThinQ</span> 대시보드</div>
       </div>
-      <div id="connBadge" class="conn-badge">
-        <div class="dot"></div>
-        <span id="connTxt">미연결</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a href="/setup" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:#c8f04a;color:#0d1008;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:all .15s" onmouseover="this.style.background='#b8e030'" onmouseout="this.style.background='#c8f04a'">
+          ➕ 기기 추가
+        </a>
+        <div id="connBadge" class="conn-badge">
+          <div class="dot"></div>
+          <span id="connTxt">미연결</span>
+        </div>
       </div>
     </div>
 
@@ -1116,6 +1126,14 @@ async function call(method, path, body=null) {
     log(`${method} ${path} → 서버 미연결`, 'w');
     return null;
   }
+}
+
+async function adminLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  try {
+    await fetch('/api/admin/logout', { method: 'POST' });
+  } catch(_) {}
+  window.location.href = '/login';
 }
 </script>
 </body>

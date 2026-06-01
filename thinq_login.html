@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThinQ 관리자 로그인</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #141720;
+  --surface2: #1c2030;
+  --border: #252a3a;
+  --border2: #2e3448;
+  --accent: #c8f04a;
+  --accent2: #a8d430;
+  --purple: #7c6bea;
+  --red: #ef4444;
+  --text: #e8eaf2;
+  --text2: #8890a8;
+  --text3: #545d78;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── 배경 ── */
+.bg-grid {
+  position: fixed; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(124,107,234,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,107,234,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.bg-glow {
+  position: fixed;
+  width: 700px; height: 700px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,240,74,.05) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: breathe 5s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  50%      { transform: translate(-50%,-50%) scale(1.08); opacity: .7; }
+}
+
+/* ── 카드 ── */
+.card {
+  position: relative; z-index: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 44px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+  animation: slideUp .4s cubic-bezier(.34,1.2,.64,1);
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── 로고 ── */
+.logo-wrap {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 32px;
+}
+.logo {
+  width: 52px; height: 52px; border-radius: 15px;
+  background: linear-gradient(135deg, var(--accent) 0%, #90d830 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 8px 24px rgba(200,240,74,.35);
+  flex-shrink: 0;
+}
+.logo-text h1 { font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
+.logo-text p  { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+/* ── 배지 ── */
+.admin-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(124,107,234,.12);
+  border: 1px solid rgba(124,107,234,.3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px; font-weight: 700;
+  color: #a78bfa; letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+/* ── 입력 ── */
+.fg { margin-bottom: 20px; }
+.fg label {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  color: var(--text3); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.input-wrap { position: relative; }
+.input-wrap input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px solid var(--border2);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  padding: 13px 46px 13px 14px;
+  outline: none;
+  transition: all .2s;
+  letter-spacing: .5px;
+}
+.input-wrap input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(124,107,234,.15);
+  background: var(--surface);
+}
+.input-wrap input::placeholder {
+  color: var(--text3);
+  font-family: 'Noto Sans KR', sans-serif;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+.toggle-btn {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  cursor: pointer; color: var(--text3);
+  font-size: 17px; padding: 4px;
+  transition: color .15s;
+}
+.toggle-btn:hover { color: var(--text2); }
+
+/* ── 에러 ── */
+.error-msg {
+  display: none;
+  align-items: center; gap: 8px;
+  background: rgba(239,68,68,.1);
+  border: 1.5px solid rgba(239,68,68,.25);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px; color: #fca5a5;
+  margin-bottom: 18px;
+  animation: shake .3s ease;
+}
+.error-msg.show { display: flex; }
+@keyframes shake {
+  0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}
+}
+
+/* ── 버튼 ── */
+.btn-login {
+  width: 100%;
+  background: var(--accent);
+  color: #0d1008;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px; font-weight: 800;
+  letter-spacing: -.2px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 4px 16px rgba(200,240,74,.25);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-login:hover:not(:disabled) {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(200,240,74,.4);
+}
+.btn-login:disabled {
+  opacity: .5; cursor: not-allowed; transform: none;
+}
+
+/* ── 로딩 스피너 ── */
+.spin {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.2);
+  border-top-color: #0d1008;
+  animation: sp .6s linear infinite;
+  display: none;
+}
+@keyframes sp { to { transform: rotate(360deg); } }
+
+/* ── 하단 링크 ── */
+.back-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text3);
+}
+.back-link a {
+  color: var(--text2);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color .15s;
+}
+.back-link a:hover { color: var(--text); }
+
+/* ── 잠금 아이콘 애니메이션 ── */
+.lock-icon {
+  font-size: 22px;
+  transition: transform .3s;
+}
+.card:has(input:focus) .lock-icon { transform: rotate(-15deg); }
+
+@media (max-width: 480px) {
+  body { padding: 20px; align-items: flex-start; padding-top: 60px; }
+  .card { padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="card">
+  <div class="logo-wrap">
+    <div class="logo">🏠</div>
+    <div class="logo-text">
+      <h1>LG ThinQ <span class="lock-icon">🔒</span></h1>
+      <p>인제 기숙사 홈 대시보드</p>
+    </div>
+  </div>
+
+  <div class="admin-badge">🛡 관리자 전용</div>
+
+  <div class="error-msg" id="errorMsg">
+    <span>⚠️</span>
+    <span id="errorText">비밀번호가 올바르지 않습니다</span>
+  </div>
+
+  <div class="fg">
+    <label>관리자 비밀번호</label>
+    <div class="input-wrap">
+      <input
+        type="password"
+        id="password"
+        placeholder="비밀번호 입력"
+        autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')login()"
+        autofocus
+      />
+      <button class="toggle-btn" onclick="togglePw()" id="toggleBtn" tabindex="-1">👁</button>
+    </div>
+  </div>
+
+  <button class="btn-login" onclick="login()" id="loginBtn">
+    <span class="spin" id="spin"></span>
+    <span id="btnText">로그인</span>
+  </button>
+
+  <div class="back-link">
+    <a href="/">← 공개 상태 조회로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+function togglePw() {
+  const inp = document.getElementById('password');
+  const btn = document.getElementById('toggleBtn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function setLoading(on) {
+  const btn = document.getElementById('loginBtn');
+  const spin = document.getElementById('spin');
+  const txt = document.getElementById('btnText');
+  btn.disabled = on;
+  spin.style.display = on ? 'block' : 'none';
+  txt.textContent = on ? '로그인 중...' : '로그인';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  document.getElementById('errorText').textContent = msg;
+  el.classList.remove('show');
+  void el.offsetWidth; // reflow for re-animation
+  el.classList.add('show');
+}
+
+async function login() {
+  const pw = document.getElementById('password').value;
+  if (!pw) {
+    showError('비밀번호를 입력하세요');
+    document.getElementById('password').focus();
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // 로그인 성공 → next 파라미터 or /admin 으로 이동
+      const params = new URLSearchParams(window.location.search);
+      window.location.href = params.get('next') || '/admin';
+    } else {
+      showError(data.error || '비밀번호가 올바르지 않습니다');
+      document.getElementById('password').select();
+    }
+  } catch (e) {
+    showError('서버 연결에 실패했습니다');
+  }
+  setLoading(false);
+}
+
+// 이미 로그인된 경우 바로 이동
+(async () => {
+  try {
+    const res = await fetch('/api/admin/check');
+    const data = await res.json();
+    if (data.loggedIn) {
+      const params = new URLSearchParams(window.location.search);
+      window.location.href = params.get('next') || '/admin';
+    }
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>
