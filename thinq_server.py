@@ -81,6 +81,7 @@ CONFIG = {
     "pat":       os.environ.get("THINQ_PAT", ""),
     "client_id": os.environ.get("THINQ_CLIENT_ID", ""),
     "country":   "KR",
+    "devices":   [],   # 수동 등록된 기기 목록
 }
 
 def load_config():
@@ -92,6 +93,7 @@ def load_config():
         CONFIG["pat"] = os.environ.get("THINQ_PAT", saved.get("pat", CONFIG["pat"]))
         CONFIG["client_id"] = os.environ.get("THINQ_CLIENT_ID", saved.get("client_id", CONFIG["client_id"]))
         CONFIG["country"] = saved.get("country", CONFIG["country"])
+        CONFIG["devices"] = saved.get("devices", [])
     except Exception as e:
         print(f"설정 파일을 불러오지 못했습니다: {e}")
 
@@ -125,6 +127,10 @@ def index():
 @app.route("/oauth")
 def oauth():
     return "카카오 인증 성공!"
+
+@app.route("/setup")
+def setup():
+    return send_from_directory(".", "thinq_setup.html")
 
 @app.route("/admin")
 def admin():
@@ -196,7 +202,54 @@ def get_config():
         "hasPat":   bool(CONFIG["pat"]),
         "clientId": CONFIG["client_id"],
         "country":  CONFIG["country"],
+        "devices":  CONFIG.get("devices", []),
     })
+
+# ── 기기 등록 (기기 추가 페이지에서 호출) ─────────────────
+@app.route("/api/devices/register", methods=["POST"])
+def register_device():
+    data = request.json or {}
+    device_id = data.get("deviceId") or data.get("id")
+    if not device_id:
+        return jsonify({"error": "deviceId가 없습니다"}), 400
+
+    devices = CONFIG.get("devices", [])
+    # 중복 체크
+    existing = next((d for d in devices if d.get("deviceId") == device_id), None)
+    if existing:
+        # 정보 업데이트
+        existing.update({
+            "deviceId": device_id,
+            "name": data.get("name", existing.get("name", "기기")),
+            "type": data.get("type", existing.get("type", "DEVICE")),
+            "model": data.get("model", existing.get("model", "")),
+        })
+    else:
+        devices.append({
+            "deviceId": device_id,
+            "name": data.get("name", "기기"),
+            "type": data.get("type", "DEVICE"),
+            "model": data.get("model", ""),
+        })
+
+    CONFIG["devices"] = devices
+    save_config()
+    return jsonify({"ok": True, "deviceId": device_id})
+
+# ── 기기 삭제 ──────────────────────────────────────────────
+@app.route("/api/devices/register/<device_id>", methods=["DELETE"])
+def unregister_device(device_id):
+    devices = CONFIG.get("devices", [])
+    before = len(devices)
+    CONFIG["devices"] = [d for d in devices if d.get("deviceId") != device_id]
+    save_config()
+    removed = before - len(CONFIG["devices"])
+    return jsonify({"ok": True, "removed": removed})
+
+# ── 등록된 기기 목록 ──────────────────────────────────────
+@app.route("/api/devices/registered", methods=["GET"])
+def get_registered_devices():
+    return jsonify({"ok": True, "devices": CONFIG.get("devices", [])})
 
 @app.route("/api/config", methods=["POST"])
 def set_config():
@@ -204,6 +257,7 @@ def set_config():
     if "pat"      in data: CONFIG["pat"]       = data["pat"]
     if "clientId" in data: CONFIG["client_id"] = data["clientId"]
     if "country"  in data: CONFIG["country"]   = data["country"]
+    if "devices"  in data: CONFIG["devices"]   = data["devices"]
     save_config()
     return jsonify({"ok": True})
 
