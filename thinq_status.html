@@ -115,6 +115,38 @@ function runText(device) {
   return device.runState || '대기';
 }
 
+// 기기별 카운트다운 초 저장 { deviceId: seconds }
+let countdowns = {};
+let tickTimer = null;
+
+function formatCountdown(seconds) {
+  if (seconds <= 0) return '곧 완료';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}시간 ${m}분 ${s}초 남음`;
+  if (m > 0) return `${m}분 ${s}초 남음`;
+  return `${s}초 남음`;
+}
+
+function updateCountdownDoms() {
+  Object.entries(countdowns).forEach(([id, sec]) => {
+    const el = document.getElementById('cd-' + id);
+    if (el) el.textContent = formatCountdown(sec);
+  });
+}
+
+function startTick() {
+  if (tickTimer) clearInterval(tickTimer);
+  tickTimer = setInterval(() => {
+    let changed = false;
+    Object.keys(countdowns).forEach(id => {
+      if (countdowns[id] > 0) { countdowns[id]--; changed = true; }
+    });
+    if (changed) updateCountdownDoms();
+  }, 1000);
+}
+
 function render(devices) {
   if (!devices.length) {
     document.getElementById('content').className = 'empty';
@@ -124,6 +156,9 @@ function render(devices) {
   document.getElementById('content').className = 'grid';
   document.getElementById('content').innerHTML = devices.map(device => {
     const powerOn = device.power === 'ON';
+    const remainDisplay = device.running && device.remainingSeconds > 0
+      ? `<span id="cd-${device.id}">${formatCountdown(countdowns[device.id] ?? device.remainingSeconds)}</span>`
+      : device.remainingText;
     return `
       <section class="card">
         <div class="top">
@@ -144,7 +179,7 @@ function render(devices) {
           </div>
           <div class="stat">
             <div class="label">남은 시간</div>
-            <div class="value">${device.remainingText}</div>
+            <div class="value">${remainDisplay}</div>
           </div>
         </div>
       </section>
@@ -157,13 +192,30 @@ async function loadStatus() {
     const res = await fetch('/api/public/status', { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok) {
-      // PAT 미설정 등 관리자 문제 — 공개 페이지에선 내부 에러 숨김
       document.getElementById('content').className = 'empty';
       document.getElementById('content').textContent = '현재 기기 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.';
       document.getElementById('updated').textContent = '조회 실패';
       return;
     }
-    render(data.devices || []);
+
+    const fetchedAt = (data.fetchedAt ?? Date.now() / 1000) * 1000;
+    const devices = data.devices || [];
+
+    // 카운트다운 업데이트: 서버 값이 현재보다 작을 때만 덮어씀 (늘어남 방지)
+    devices.forEach(d => {
+      if (d.running && d.remainingSeconds > 0) {
+        const elapsed = Math.floor((Date.now() - fetchedAt) / 1000);
+        const serverVal = Math.max(0, d.remainingSeconds - elapsed);
+        if (countdowns[d.id] === undefined || serverVal < countdowns[d.id]) {
+          countdowns[d.id] = serverVal;
+        }
+      } else {
+        delete countdowns[d.id];
+      }
+    });
+
+    render(devices);
+    startTick();
     document.getElementById('updated').textContent = `업데이트 ${new Date().toLocaleTimeString('ko-KR')}`;
   } catch (err) {
     document.getElementById('content').className = 'empty';
