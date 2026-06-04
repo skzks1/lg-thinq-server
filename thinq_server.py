@@ -363,6 +363,25 @@ def register_device():
     save_config()
     return jsonify({"ok": True, "deviceId": device_id})
 
+# ── 기기 이름 변경 ────────────────────────────────────────
+@app.route("/api/devices/<device_id>/rename", methods=["PATCH"])
+@admin_required
+def rename_device(device_id):
+    data = request.json or {}
+    new_name = data.get("name", "").strip()
+    if not new_name:
+        return jsonify({"error": "name이 없습니다"}), 400
+
+    devices = CONFIG.get("devices", [])
+    target = next((d for d in devices if d.get("deviceId") == device_id), None)
+    if not target:
+        return jsonify({"error": "등록된 기기를 찾을 수 없습니다"}), 404
+
+    target["name"] = new_name
+    CONFIG["devices"] = devices
+    save_config()
+    return jsonify({"ok": True, "deviceId": device_id, "name": new_name})
+
 # ── 기기 삭제 ──────────────────────────────────────────────
 @app.route("/api/devices/register/<device_id>", methods=["DELETE"])
 @admin_required
@@ -585,7 +604,6 @@ def public_status():
                 device_id = device.get("deviceId") or device.get("id")
                 if not device_id:
                     continue
-                # CONFIG에 저장된 커스텀 이름 찾기
                 reg_info = next((d for d in registered if d.get("deviceId") == device_id), {})
                 custom_name = reg_info.get("name") or None
                 try:
