@@ -291,7 +291,7 @@ def _device_type(device):
         return "WASHER"
     return raw or "DEVICE"
 
-def _public_device(device, state):
+def _public_device(device, state, custom_name=None):
     info  = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
     state = _first_state(state)
     values = " ".join(_deep_values(state))
@@ -312,7 +312,7 @@ def _public_device(device, state):
 
     return {
     "id":             device.get("deviceId") or device.get("id"),
-    "name":           info.get("alias")      or device.get("alias")     or "기기",
+    "name":           custom_name or info.get("alias") or device.get("alias") or "기기",
     "type":           _device_type(device),
     "model":          info.get("modelName")  or device.get("modelName") or "",
     "power":          "ON" if power_on else "OFF",
@@ -585,11 +585,14 @@ def public_status():
                 device_id = device.get("deviceId") or device.get("id")
                 if not device_id:
                     continue
+                # CONFIG에 저장된 커스텀 이름 찾기
+                reg_info = next((d for d in registered if d.get("deviceId") == device_id), {})
+                custom_name = reg_info.get("name") or None
                 try:
                     state = await api.async_get_device_status(device_id)
                 except Exception:
                     state = {}
-                public_devices.append(_public_device(device, state))
+                public_devices.append(_public_device(device, state, custom_name=custom_name))
             return public_devices
 
     try:
