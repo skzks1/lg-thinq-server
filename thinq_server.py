@@ -406,20 +406,46 @@ def get_device_state(device_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── 공개 상태 조회 ─────────────────────────────────────────
+# ── 공개 상태 조회 (관리자가 등록한 기기만, PAT 노출 없음) ──
 @app.route("/api/public/status", methods=["GET"])
 def public_status():
+    registered = CONFIG.get("devices", [])
+    if not registered:
+        return jsonify({"ok": True, "devices": [], "notice": "등록된 기기가 없습니다"})
+
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "관리자 설정이 필요합니다"}), 400
+
+    registered_ids = {d.get("deviceId") for d in registered if d.get("deviceId")}
 
     async def _do():
         async with ClientSession() as session:
             api = get_api(session)
-            devices = await api.async_get_device_list()
-            if isinstance(devices, dict):
-                devices = devices.get("devices") or devices.get("items") or devices.get("item") or devices.get("data") or []
+            all_devices = await api.async_get_device_list()
+            if isinstance(all_devices, dict):
+                all_devices = (all_devices.get("devices") or all_devices.get("items")
+                               or all_devices.get("item") or all_devices.get("data") or [])
+
+            # 관리자가 등록한 기기만 필터링
+            filtered = [d for d in (all_devices or [])
+                        if (d.get("deviceId") or d.get("id")) in registered_ids]
+
+            # 등록은 됐지만 API 목록에 없는 기기는 등록 정보로 대체
+            found_ids = {d.get("deviceId") or d.get("id") for d in filtered}
+            for reg in registered:
+                rid = reg.get("deviceId")
+                if rid and rid not in found_ids:
+                    filtered.append({
+                        "deviceId": rid,
+                        "deviceInfo": {
+                            "alias": reg.get("name", "기기"),
+                            "modelName": reg.get("model", ""),
+                            "deviceType": reg.get("type", "DEVICE"),
+                        }
+                    })
+
             public_devices = []
-            for device in devices or []:
+            for device in filtered:
                 device_id = device.get("deviceId") or device.get("id")
                 if not device_id:
                     continue

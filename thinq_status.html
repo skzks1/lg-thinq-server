@@ -3,1014 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ThinQ 기기 추가</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>인제고 기숙사 ThinQ 상태 조회</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #0d0f14;
-  --surface: #141720;
-  --surface2: #1c2030;
-  --border: #252a3a;
-  --border2: #2e3448;
-  --accent: #c8f04a;
-  --accent2: #a8d430;
-  --purple: #7c6bea;
-  --blue: #3b82f6;
-  --green: #22c55e;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --text: #e8eaf2;
-  --text2: #8890a8;
-  --text3: #545d78;
-  --washer: #3b82f6;
-  --dryer: #f59e0b;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
-  font-family: 'Noto Sans KR', -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
   min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ── 배경 파티클 ── */
-.bg-grid {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background-image:
-    linear-gradient(rgba(124,107,234,.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124,107,234,.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-.bg-glow {
-  position: fixed; width: 600px; height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(200,240,74,.06) 0%, transparent 70%);
-  top: -200px; left: -100px; pointer-events: none; z-index: 0;
-}
-.bg-glow2 {
-  position: fixed; width: 400px; height: 400px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(124,107,234,.07) 0%, transparent 70%);
-  bottom: -100px; right: -50px; pointer-events: none; z-index: 0;
-}
-
-/* ── 레이아웃 ── */
-.wrap {
-  position: relative; z-index: 1;
-  max-width: 780px; margin: 0 auto;
-  padding: 48px 24px 80px;
-}
-
-/* ── 헤더 ── */
-.header {
-  display: flex; align-items: center; gap: 16px;
-  margin-bottom: 48px;
-}
-.logo {
-  width: 48px; height: 48px; border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent) 0%, #90d830 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
-  box-shadow: 0 8px 24px rgba(200,240,74,.3);
-}
-.header-text h1 {
-  font-size: 24px; font-weight: 900; letter-spacing: -.6px; line-height: 1.1;
-}
-.header-text p { font-size: 13px; color: var(--text2); margin-top: 4px; }
-
-.back-btn {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 18px; border-radius: 10px;
-  background: var(--surface2); border: 1.5px solid var(--border2);
-  color: var(--text2); font-size: 13px; font-weight: 600;
-  cursor: pointer; text-decoration: none; transition: all .15s;
-  font-family: inherit;
-}
-.back-btn:hover { border-color: var(--border); color: var(--text); }
-
-/* ── 스텝 인디케이터 ── */
-.steps {
-  display: flex; align-items: center; gap: 0;
-  margin-bottom: 36px;
-}
-.step {
-  display: flex; align-items: center; gap: 10px;
-  flex: 1;
-}
-.step-circle {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 2px solid var(--border2);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: var(--text3);
-  transition: all .3s; flex-shrink: 0;
-  background: var(--surface);
-}
-.step.active .step-circle {
-  border-color: var(--accent); color: var(--bg);
-  background: var(--accent); box-shadow: 0 0 16px rgba(200,240,74,.4);
-}
-.step.done .step-circle {
-  border-color: var(--green); color: var(--green);
-  background: rgba(34,197,94,.1);
-}
-.step-label {
-  font-size: 12px; font-weight: 600; color: var(--text3);
-  transition: color .3s;
-}
-.step.active .step-label { color: var(--text); }
-.step.done .step-label { color: var(--green); }
-.step-line {
-  flex: 1; height: 1px;
-  background: var(--border);
-  margin: 0 8px;
-  transition: background .3s;
-}
-.step-line.done { background: var(--green); }
-
-/* ── 카드 ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: #f5f6f8;
+  color: #18182f;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   padding: 28px;
-  margin-bottom: 16px;
 }
-.card-head {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 22px;
+.wrap { max-width: 920px; margin: 0 auto; }
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.card-head-icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: rgba(124,107,234,.15);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
+h1 { font-size: 26px; letter-spacing: -.4px; }
+.sub { color: #74788a; font-size: 14px; margin-top: 6px; }
+.updated {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 999px;
+  color: #74788a;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  white-space: nowrap;
 }
-.card-head h2 {
-  font-size: 15px; font-weight: 700; letter-spacing: -.3px;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
 }
-.card-head p { font-size: 12px; color: var(--text2); margin-top: 2px; }
-
-/* ── 입력 ── */
-.fg { margin-bottom: 18px; }
-.fg label {
-  display: block; font-size: 11px; font-weight: 700;
-  color: var(--text3); letter-spacing: 1px; text-transform: uppercase;
-  margin-bottom: 8px;
+.card {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 28px rgba(20, 20, 45, .05);
 }
-.input-wrap { position: relative; }
-.input-wrap input {
-  width: 100%; background: var(--surface2);
-  border: 1.5px solid var(--border2);
-  border-radius: 12px; color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; padding: 12px 46px 12px 14px;
-  outline: none; transition: all .2s;
+.top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.icon { font-size: 38px; }
+.name { font-size: 20px; font-weight: 700; letter-spacing: -.2px; }
+.model { color: #858a99; font-size: 13px; margin-top: 4px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.badge {
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 12px;
 }
-.input-wrap input:focus {
-  border-color: var(--purple);
-  box-shadow: 0 0 0 3px rgba(124,107,234,.15);
-  background: var(--surface);
+.on { background: #eef7ff; color: #1763a6; }
+.off { background: #f0f1f4; color: #7b8190; }
+.run { background: #eaf8e8; color: #247a28; }
+.idle { background: #f4f4f6; color: #74788a; }
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-.input-wrap input::placeholder { color: var(--text3); font-family: 'Noto Sans KR', sans-serif; }
-.input-toggle {
-  position: absolute; right: 12px; top: 50%;
-  transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  color: var(--text3); font-size: 16px; padding: 4px;
-  transition: color .15s;
+.stat {
+  background: #f8f9fb;
+  border: 1px solid #eef0f5;
+  border-radius: 12px;
+  padding: 14px;
 }
-.input-toggle:hover { color: var(--text2); }
-
-.hint {
-  margin-top: 8px; font-size: 12px; color: var(--text3); line-height: 1.6;
-  display: flex; align-items: flex-start; gap: 6px;
+.label { color: #777d8d; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.value { font-size: 17px; font-weight: 700; }
+.empty, .error {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 16px;
+  color: #74788a;
+  padding: 36px 20px;
+  text-align: center;
 }
-
-/* ── 버튼 ── */
-.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 12px 24px; border-radius: 12px; border: none;
-  font-family: inherit; font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: all .2s; letter-spacing: -.2px;
-}
-.btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
-
-.btn-accent {
-  background: var(--accent); color: #0d1008;
-  box-shadow: 0 4px 16px rgba(200,240,74,.25);
-}
-.btn-accent:hover:not(:disabled) {
-  background: var(--accent2); transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(200,240,74,.35);
-}
-.btn-primary {
-  background: var(--purple); color: #fff;
-  box-shadow: 0 4px 16px rgba(124,107,234,.25);
-}
-.btn-primary:hover:not(:disabled) {
-  background: #9080f0; transform: translateY(-2px);
-}
-.btn-ghost {
-  background: var(--surface2); color: var(--text2);
-  border: 1.5px solid var(--border2);
-}
-.btn-ghost:hover:not(:disabled) { border-color: var(--border); color: var(--text); }
-.btn-green {
-  background: rgba(34,197,94,.15); color: var(--green);
-  border: 1.5px solid rgba(34,197,94,.3);
-}
-.btn-green:hover:not(:disabled) { background: rgba(34,197,94,.25); }
-
-/* ── 로더 ── */
-.loader {
-  display: none; align-items: center; justify-content: center;
-  gap: 14px; padding: 36px;
-  flex-direction: column;
-}
-.loader.show { display: flex; }
-.loader-ring {
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 3px solid var(--border2);
-  border-top-color: var(--accent);
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loader-text { color: var(--text2); font-size: 14px; font-weight: 500; }
-.loader-dots span {
-  display: inline-block; animation: blink 1.2s infinite;
-}
-.loader-dots span:nth-child(2) { animation-delay: .2s; }
-.loader-dots span:nth-child(3) { animation-delay: .4s; }
-@keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
-
-/* ── 기기 목록 ── */
-.device-list { display: flex; flex-direction: column; gap: 10px; }
-.device-item {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 14px; padding: 16px 18px;
-  display: flex; align-items: center; gap: 14px;
-  transition: all .2s; cursor: pointer;
-  position: relative; overflow: hidden;
-}
-.device-item::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(200,240,74,.05), transparent);
-  opacity: 0; transition: opacity .2s;
-}
-.device-item:hover { border-color: var(--accent); }
-.device-item:hover::before { opacity: 1; }
-.device-item.selected {
-  border-color: var(--accent);
-  background: rgba(200,240,74,.06);
-}
-.device-item.adding {
-  border-color: var(--purple);
-  background: rgba(124,107,234,.06);
-}
-.device-item.added {
-  border-color: var(--green);
-  background: rgba(34,197,94,.05);
-}
-
-.device-icon {
-  width: 44px; height: 44px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
-}
-.device-icon.washer { background: rgba(59,130,246,.15); }
-.device-icon.dryer  { background: rgba(245,158,11,.15); }
-.device-icon.other  { background: rgba(124,107,234,.15); }
-
-.device-info { flex: 1; min-width: 0; }
-.device-name {
-  font-size: 15px; font-weight: 700; letter-spacing: -.2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.device-model {
-  font-size: 11px; color: var(--text3);
-  font-family: 'JetBrains Mono', monospace; margin-top: 3px;
-}
-.device-id {
-  font-size: 10px; color: var(--text3);
-  font-family: 'JetBrains Mono', monospace; margin-top: 2px;
-}
-
-.device-type-badge {
-  padding: 4px 10px; border-radius: 6px;
-  font-size: 10px; font-weight: 700; letter-spacing: .5px;
-  text-transform: uppercase;
-}
-.type-washer { background: rgba(59,130,246,.15); color: #60a5fa; }
-.type-dryer  { background: rgba(245,158,11,.15);  color: #fbbf24; }
-.type-other  { background: rgba(124,107,234,.15); color: #a78bfa; }
-
-.device-add-btn {
-  width: 32px; height: 32px; border-radius: 8px; border: none;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; cursor: pointer; transition: all .2s;
-  flex-shrink: 0;
-}
-.add-idle  { background: rgba(200,240,74,.1); color: var(--accent); }
-.add-idle:hover { background: rgba(200,240,74,.2); }
-.add-loading { background: rgba(124,107,234,.1); color: var(--purple); cursor: default; }
-.add-done  { background: rgba(34,197,94,.1); color: var(--green); cursor: default; }
-
-/* ── 스피너 작은 것 ── */
-.mini-spin {
-  display: inline-block; width: 14px; height: 14px;
-  border: 2px solid currentColor; border-top-color: transparent;
-  border-radius: 50%; animation: spin .6s linear infinite;
-}
-
-/* ── 알림 배너 ── */
-.banner {
-  display: flex; align-items: flex-start; gap: 10px;
-  border-radius: 12px; padding: 14px 16px;
-  font-size: 13px; line-height: 1.6; margin-bottom: 16px;
-  animation: fadeIn .3s ease;
-}
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-.banner.info  { background: rgba(59,130,246,.1);  border: 1.5px solid rgba(59,130,246,.25); color: #93c5fd; }
-.banner.success { background: rgba(34,197,94,.1); border: 1.5px solid rgba(34,197,94,.25); color: #86efac; }
-.banner.error { background: rgba(239,68,68,.1);   border: 1.5px solid rgba(239,68,68,.25); color: #fca5a5; }
-.banner.warn  { background: rgba(245,158,11,.1);  border: 1.5px solid rgba(245,158,11,.25); color: #fcd34d; }
-.banner-icon { font-size: 15px; margin-top: 1px; flex-shrink: 0; }
-
-/* ── 결과 요약 ── */
-.result-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 12px; margin-top: 20px;
-}
-.result-item {
-  background: var(--surface2); border: 1.5px solid var(--border);
-  border-radius: 14px; padding: 18px;
-  display: flex; flex-direction: column; gap: 6px;
-}
-.result-item.added { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.05); }
-.result-item.failed { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.04); }
-.result-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: .5px; text-transform: uppercase; }
-.result-name { font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
-.result-status { font-size: 12px; font-weight: 600; margin-top: 2px; }
-.result-status.ok { color: var(--green); }
-.result-status.fail { color: var(--red); }
-
-/* ── 선택 칩 ── */
-.chip-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-.chip {
-  padding: 7px 14px; border-radius: 8px;
-  border: 1.5px solid var(--border2);
-  background: var(--surface2);
-  font-size: 12px; font-weight: 600; color: var(--text2);
-  cursor: pointer; transition: all .15s;
-}
-.chip:hover { border-color: var(--border); color: var(--text); }
-.chip.active { border-color: var(--accent); color: var(--accent); background: rgba(200,240,74,.08); }
-
-/* ── 섹션 구분 ── */
-.divider {
-  display: flex; align-items: center; gap: 12px;
-  color: var(--text3); font-size: 11px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase;
-  margin: 20px 0 16px;
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-
-/* ── 로그 박스 ── */
-.log-box {
-  background: #0a0c10; border-radius: 12px;
-  border: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; line-height: 1.8; padding: 14px 16px;
-  max-height: 160px; overflow-y: auto; color: var(--text3);
-}
-.log-box::-webkit-scrollbar { width: 3px; }
-.log-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-.log-ok  { color: #4ade80; }
-.log-err { color: #f87171; }
-.log-in  { color: #60a5fa; }
-.log-w   { color: #fbbf24; }
-
-/* ── 페이지 전환 ── */
-.page { display: none; }
-.page.active { display: block; animation: fadeIn .25s ease; }
-
-/* ── 완료 아이콘 ── */
-.success-icon {
-  width: 72px; height: 72px; border-radius: 50%;
-  background: rgba(34,197,94,.1);
-  border: 2px solid rgba(34,197,94,.4);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px; margin: 0 auto 20px;
-  animation: pop .4s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-@media (max-width: 600px) {
-  .wrap { padding: 28px 16px 60px; }
-  .header h1 { font-size: 20px; }
-  .result-grid { grid-template-columns: 1fr; }
-  .steps { display: none; }
+.error { color: #c43b55; }
+@media (max-width: 640px) {
+  body { padding: 18px; }
+  .head { align-items: flex-start; flex-direction: column; }
+  h1 { font-size: 23px; }
 }
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-glow"></div>
-<div class="bg-glow2"></div>
-
-<div class="wrap">
-
-  <!-- 헤더 -->
-  <div class="header">
-    <div class="logo">🏠</div>
-    <div class="header-text">
-      <h1>ThinQ 기기 추가</h1>
-      <p>PAT 인증으로 세탁기·건조기를 자동 등록</p>
+<main class="wrap">
+  <div class="head">
+    <div>
+      <h1>인제 기숙사 상태 조회</h1>
+      <div class="sub">세탁기와 건조기의 전원, 작동 상태, 남은 시간만 표시됩니다.</div>
     </div>
-    <a href="/admin" class="back-btn">← 대시보드</a>
+    <div class="updated" id="updated">불러오는 중</div>
   </div>
-
-  <!-- 스텝 -->
-  <div class="steps">
-    <div class="step active" id="step1">
-      <div class="step-circle">1</div>
-      <div class="step-label">PAT 입력</div>
-    </div>
-    <div class="step-line" id="line1"></div>
-    <div class="step active" id="step2">
-      <div class="step-circle">2</div>
-      <div class="step-label">기기 탐색</div>
-    </div>
-    <div class="step-line" id="line2"></div>
-    <div class="step" id="step3">
-      <div class="step-circle">3</div>
-      <div class="step-label">선택 & 추가</div>
-    </div>
-    <div class="step-line" id="line3"></div>
-    <div class="step" id="step4">
-      <div class="step-circle">4</div>
-      <div class="step-label">완료</div>
-    </div>
-  </div>
-
-  <!-- ===== 페이지 1: PAT 입력 ===== -->
-  <div class="page active" id="page-pat">
-    <div id="banner-area"></div>
-
-    <div class="card">
-      <div class="card-head">
-        <div class="card-head-icon">🔑</div>
-        <div>
-          <h2>PAT 인증 정보 입력</h2>
-          <p>LG ThinQ Personal Access Token을 입력하세요</p>
-        </div>
-      </div>
-
-      <div class="fg">
-        <label>PAT (Personal Access Token)</label>
-        <div class="input-wrap">
-          <input type="password" id="patInput" placeholder="thinqpat_으로 시작하는 토큰" autocomplete="off" />
-          <button class="input-toggle" onclick="togglePat()" id="patToggle" title="표시/숨기기">👁</button>
-        </div>
-        <div class="hint">
-          💡 <span><a href="https://connect-pat.lgthinq.com/login" target="_blank" style="color:var(--purple)">connect-pat.lgthinq.com</a> 에서 발급 · 서버에 저장된 PAT가 있으면 비워두세요</span>
-        </div>
-      </div>
-
-      <div class="fg" style="margin-bottom:0">
-        <label>국가 코드</label>
-        <div class="chip-group" id="countryChips">
-          <div class="chip active" onclick="selectCountry('KR', this)">🇰🇷 KR</div>
-          <div class="chip" onclick="selectCountry('US', this)">🇺🇸 US</div>
-          <div class="chip" onclick="selectCountry('JP', this)">🇯🇵 JP</div>
-          <div class="chip" onclick="selectCountry('EU', this)">🇪🇺 EU</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-accent" onclick="startDiscovery()">
-        <span>🔍</span> 기기 자동 탐색
-      </button>
-      <button class="btn btn-ghost" onclick="goAdmin()">취소</button>
-    </div>
-  </div>
-
-  <!-- ===== 페이지 2: 탐색 중 ===== -->
-  <div class="page" id="page-loading">
-    <div class="card">
-      <div class="loader show">
-        <div class="loader-ring"></div>
-        <div>
-          <div class="loader-text" id="loadingText">기기를 탐색하는 중입니다</div>
-          <div style="text-align:center;margin-top:6px;color:var(--text3);font-size:13px">
-            <span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:0">
-      <div class="card-head" style="margin-bottom:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase">탐색 로그</div>
-      </div>
-      <div class="log-box" id="scanLog">
-        <div><span class="log-in">[시스템]</span> 탐색 시작...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== 페이지 3: 기기 선택 ===== -->
-  <div class="page" id="page-select">
-    <div id="select-banner"></div>
-
-    <div class="card">
-      <div class="card-head">
-        <div class="card-head-icon">📱</div>
-        <div>
-          <h2>발견된 기기</h2>
-          <p id="found-count">기기를 불러왔습니다</p>
-        </div>
-      </div>
-
-      <div class="divider">기기 목록</div>
-      <div class="device-list" id="deviceList">
-        <!-- 동적으로 삽입 -->
-      </div>
-
-      <div class="divider" style="margin-top:24px">추가할 기기 선택</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7">
-        위 목록에서 <strong style="color:var(--accent)">세탁기</strong>와 <strong style="color:var(--amber)">건조기</strong>를 클릭해서 선택하거나, 아래 버튼으로 전체를 한번에 추가하세요.
-      </div>
-    </div>
-
-    <div class="btn-row" style="margin-bottom:16px">
-      <button class="btn btn-accent" onclick="addSelected()" id="addSelectedBtn" disabled>
-        <span>➕</span> 선택한 기기 추가
-      </button>
-      <button class="btn btn-primary" onclick="addAll()">
-        <span>⚡</span> 세탁기·건조기 전체 추가
-      </button>
-      <button class="btn btn-ghost" onclick="goPage('page-pat')">← 다시 입력</button>
-    </div>
-
-    <div class="card" style="margin-top:0">
-      <div class="card-head" style="margin-bottom:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase">처리 로그</div>
-      </div>
-      <div class="log-box" id="addLog">
-        <div><span class="log-in">[준비]</span> 추가할 기기를 선택하세요</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== 페이지 4: 완료 ===== -->
-  <div class="page" id="page-done">
-    <div class="card" style="text-align:center;padding:40px 28px">
-      <div class="success-icon">✅</div>
-      <div style="font-size:22px;font-weight:900;letter-spacing:-.5px;margin-bottom:8px">기기 추가 완료!</div>
-      <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px" id="doneSubText">
-        기기가 성공적으로 등록되었습니다.
-      </div>
-      <div class="result-grid" id="resultGrid"></div>
-    </div>
-    <div class="btn-row" style="justify-content:center;margin-top:16px">
-      <a href="/admin" class="btn btn-accent">🏠 대시보드로 이동</a>
-      <a href="/" class="btn btn-ghost">📊 상태 조회</a>
-      <button class="btn btn-ghost" onclick="goPage('page-pat')">+ 기기 더 추가</button>
-    </div>
-  </div>
-
-</div>
+  <div id="content" class="empty">상태를 불러오는 중입니다.</div>
+</main>
 
 <script>
-// ── 상태 ─────────────────────────────────────────────────
-let selectedCountry = 'KR';
-let discoveredDevices = [];
-let selectedIds = new Set();
-let addResults = [];
-
-// ── 유틸 ─────────────────────────────────────────────────
-function goPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function iconFor(type) {
+  if (type === 'WASHER') return '🫧';
+  if (type === 'DRYER') return '🌀';
+  return '📦';
 }
 
-function goAdmin() { window.location.href = '/admin'; }
-
-function updateSteps(active) {
-  const steps = ['step1','step2','step3','step4'];
-  const lines = ['line1','line2','line3'];
-  steps.forEach((id, i) => {
-    const el = document.getElementById(id);
-    el.className = 'step';
-    if (i + 1 < active) el.classList.add('done');
-    else if (i + 1 === active) el.classList.add('active');
-  });
-  lines.forEach((id, i) => {
-    const el = document.getElementById(id);
-    el.className = 'step-line';
-    if (i + 1 < active) el.classList.add('done');
-  });
+function runText(device) {
+  if (device.running) return '작동 중';
+  if (device.runState === 'INITIAL' || device.runState === 'STANDBY') return '대기';
+  return device.runState || '대기';
 }
 
-function selectCountry(code, el) {
-  selectedCountry = code;
-  document.querySelectorAll('#countryChips .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function togglePat() {
-  const inp = document.getElementById('patInput');
-  const btn = document.getElementById('patToggle');
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-  else { inp.type = 'password'; btn.textContent = '👁'; }
-}
-
-function showBanner(area, type, msg) {
-  const icons = { info: 'ℹ️', success: '✅', error: '❌', warn: '⚠️' };
-  document.getElementById(area).innerHTML = `
-    <div class="banner ${type}">
-      <span class="banner-icon">${icons[type]}</span>
-      <span>${msg}</span>
-    </div>`;
-}
-
-function addLog(boxId, msg, type='in') {
-  const box = document.getElementById(boxId);
-  const t = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const d = document.createElement('div');
-  d.innerHTML = `<span style="color:var(--text3)">[${t}]</span> <span class="log-${type}">${msg}</span>`;
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-}
-
-function deviceType(device) {
-  const info = device.deviceInfo ?? {};
-  const raw = String(info.deviceType ?? device.deviceType ?? '').toUpperCase();
-  const alias = String(info.alias ?? device.alias ?? '').toUpperCase();
-  const model = String(info.modelName ?? device.modelName ?? '').toUpperCase();
-  const text = `${raw} ${alias} ${model}`;
-  if (/^RH[A-Z0-9]/.test(model) || text.includes('DRYER') || text.includes('DRY') || text.includes('건조')) return 'DRYER';
-  if (/^F[A-Z0-9]/.test(model) || text.includes('WASHER') || text.includes('WASH') || text.includes('세탁')) return 'WASHER';
-  return raw || 'DEVICE';
-}
-
-function deviceId(device) {
-  return device.deviceId ?? device.id ?? device.device_id ?? '-';
-}
-function deviceName(device) {
-  const info = device.deviceInfo ?? {};
-  return info.alias ?? info.name ?? device.alias ?? device.name ?? '기기';
-}
-function deviceModel(device) {
-  const info = device.deviceInfo ?? {};
-  return info.modelName ?? device.modelName ?? device.model ?? '';
-}
-
-function extractList(data) {
-  if (Array.isArray(data)) return data;
-  if (!data || typeof data !== 'object') return [];
-  for (const key of ['devices','item','items','list','result','data']) {
-    const found = extractList(data[key]);
-    if (found.length) return found;
-  }
-  return [];
-}
-
-// ── STEP 1 → 탐색 시작 ───────────────────────────────────
-async function startDiscovery() {
-  const pat = document.getElementById('patInput').value.trim();
-
-  document.getElementById('banner-area').innerHTML = '';
-
-  // PAT 입력 or 서버에 저장된 PAT 사용
-  if (pat) {
-    // PAT를 서버에 저장 먼저
-    goPage('page-loading');
-    updateSteps(2);
-    addLog('scanLog', 'PAT 서버에 저장 중...', 'in');
-
-    const saveRes = await apiCall('POST', '/api/config', {
-      pat, clientId: '', country: selectedCountry
-    });
-
-    if (!saveRes) {
-      goPage('page-pat');
-      updateSteps(1);
-      showBanner('banner-area', 'error', 'PAT 저장에 실패했습니다. 서버가 실행 중인지 확인하세요.');
-      return;
-    }
-    addLog('scanLog', 'PAT 저장 완료', 'ok');
-  } else {
-    goPage('page-loading');
-    updateSteps(2);
-    addLog('scanLog', '서버에 저장된 PAT로 탐색합니다', 'in');
-  }
-
-  // 클라이언트 등록
-  document.getElementById('loadingText').textContent = '클라이언트 등록 중...';
-  addLog('scanLog', '클라이언트 ID 등록 중...', 'in');
-
-  const regRes = await apiCall('POST', '/api/client/register', {});
-  if (regRes && regRes.clientId) {
-    addLog('scanLog', `클라이언트 등록 완료: ${regRes.clientId.substring(0,8)}...`, 'ok');
-  } else {
-    addLog('scanLog', '클라이언트 등록 실패 — 기존 ID로 계속합니다', 'w');
-  }
-
-  // 기기 탐색
-  document.getElementById('loadingText').textContent = 'LG ThinQ 기기 탐색 중...';
-  addLog('scanLog', 'LG ThinQ API에서 기기 목록 요청 중...', 'in');
-
-  const devRes = await apiCall('GET', '/api/devices');
-  if (!devRes) {
-    goPage('page-pat');
-    updateSteps(1);
-    showBanner('banner-area', 'error', '기기 탐색에 실패했습니다. PAT를 확인하고 다시 시도하세요.');
+function render(devices) {
+  if (!devices.length) {
+    document.getElementById('content').className = 'empty';
+    document.getElementById('content').textContent = '등록된 기기가 없습니다. 관리자에게 문의하세요.';
     return;
   }
-
-  const list = extractList(devRes.devices ?? devRes);
-  discoveredDevices = list;
-
-  addLog('scanLog', `기기 ${list.length}개 발견!`, 'ok');
-  list.forEach(d => {
-    const t = deviceType(d);
-    addLog('scanLog', `  📦 ${deviceName(d)} (${t} · ${deviceModel(d)})`, 'ok');
-  });
-
-  if (list.length === 0) {
-    goPage('page-pat');
-    updateSteps(1);
-    showBanner('banner-area', 'warn', 'ThinQ에 등록된 기기가 없습니다. LG ThinQ 앱에서 기기를 먼저 추가하세요.');
-    return;
-  }
-
-  renderDeviceList(list);
-  goPage('page-select');
-  updateSteps(3);
-  document.getElementById('found-count').textContent =
-    `총 ${list.length}개 기기 발견 — 추가할 기기를 선택하세요`;
-}
-
-// ── 기기 목록 렌더 ────────────────────────────────────────
-function renderDeviceList(devices) {
-  const list = document.getElementById('deviceList');
-  list.innerHTML = '';
-  selectedIds.clear();
-  updateAddBtn();
-
-  // 세탁기·건조기 먼저 정렬
-  const sorted = [...devices].sort((a, b) => {
-    const order = { WASHER: 0, DRYER: 1 };
-    return (order[deviceType(a)] ?? 2) - (order[deviceType(b)] ?? 2);
-  });
-
-  sorted.forEach(device => {
-    const id = deviceId(device);
-    const type = deviceType(device);
-    const name = deviceName(device);
-    const model = deviceModel(device);
-
-    const typeClass = type === 'WASHER' ? 'washer' : type === 'DRYER' ? 'dryer' : 'other';
-    const badgeClass = `type-${typeClass}`;
-    const icon = type === 'WASHER' ? '🫧' : type === 'DRYER' ? '🌀' : '📦';
-    const typeLabel = type === 'WASHER' ? '세탁기' : type === 'DRYER' ? '건조기' : type;
-
-    const el = document.createElement('div');
-    el.className = 'device-item';
-    el.id = `dev-${id}`;
-    el.innerHTML = `
-      <div class="device-icon ${typeClass}">${icon}</div>
-      <div class="device-info">
-        <div class="device-name">${name}</div>
-        <div class="device-model">${model}</div>
-        <div class="device-id">${id}</div>
-      </div>
-      <div class="device-type-badge ${badgeClass}">${typeLabel}</div>
-      <button class="device-add-btn add-idle" id="addbtn-${id}" onclick="toggleSelect('${id}')" title="선택">✓</button>
-    `;
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.device-add-btn')) return;
-      toggleSelect(id);
-    });
-    list.appendChild(el);
-  });
-}
-
-function toggleSelect(id) {
-  const el = document.getElementById(`dev-${id}`);
-  const btn = document.getElementById(`addbtn-${id}`);
-  if (selectedIds.has(id)) {
-    selectedIds.delete(id);
-    el.classList.remove('selected');
-    btn.className = 'device-add-btn add-idle';
-    btn.textContent = '✓';
-  } else {
-    selectedIds.add(id);
-    el.classList.add('selected');
-    btn.className = 'device-add-btn add-done';
-    btn.textContent = '✓';
-  }
-  updateAddBtn();
-}
-
-function updateAddBtn() {
-  const btn = document.getElementById('addSelectedBtn');
-  btn.disabled = selectedIds.size === 0;
-  btn.innerHTML = selectedIds.size > 0
-    ? `<span>➕</span> 선택한 기기 추가 (${selectedIds.size}개)`
-    : `<span>➕</span> 선택한 기기 추가`;
-}
-
-// ── STEP 3 → 기기 추가 ───────────────────────────────────
-async function addSelected() {
-  const targets = discoveredDevices.filter(d => selectedIds.has(deviceId(d)));
-  await doAdd(targets);
-}
-
-async function addAll() {
-  const targets = discoveredDevices.filter(d => {
-    const t = deviceType(d);
-    return t === 'WASHER' || t === 'DRYER';
-  });
-  if (targets.length === 0) {
-    showBanner('select-banner', 'warn', '세탁기·건조기가 발견되지 않았습니다. 다른 기기를 선택하려면 직접 클릭하세요.');
-    return;
-  }
-  await doAdd(targets);
-}
-
-async function doAdd(targets) {
-  if (targets.length === 0) {
-    showBanner('select-banner', 'warn', '추가할 기기를 선택하세요.');
-    return;
-  }
-
-  addResults = [];
-  document.getElementById('select-banner').innerHTML = '';
-  updateSteps(4);
-
-  // 버튼 비활성화
-  document.getElementById('addSelectedBtn').disabled = true;
-  document.querySelectorAll('.btn-primary, .btn-ghost').forEach(b => b.disabled = true);
-
-  for (const device of targets) {
-    const id = deviceId(device);
-    const name = deviceName(device);
-    const type = deviceType(device);
-    const el = document.getElementById(`dev-${id}`);
-    const btn = document.getElementById(`addbtn-${id}`);
-
-    if (el) {
-      el.className = 'device-item adding';
-      btn.className = 'device-add-btn add-loading';
-      btn.innerHTML = '<span class="mini-spin"></span>';
-    }
-
-    addLog('addLog', `${name} 추가 중...`, 'in');
-
-    // config에 기기 정보 저장 (서버 API 통해)
-    const result = await registerDevice(device);
-
-    if (result.ok) {
-      addLog('addLog', `${name} 추가 완료 ✓`, 'ok');
-      if (el) {
-        el.className = 'device-item added';
-        btn.className = 'device-add-btn add-done';
-        btn.textContent = '✓';
-      }
-      addResults.push({ device, name, type, ok: true });
-    } else {
-      addLog('addLog', `${name} 추가 실패: ${result.error}`, 'err');
-      if (el) {
-        el.className = 'device-item';
-        btn.className = 'device-add-btn add-idle';
-        btn.textContent = '!';
-      }
-      addResults.push({ device, name, type, ok: false, error: result.error });
-    }
-  }
-
-  // 완료 페이지
-  renderDone();
-  goPage('page-done');
-}
-
-async function registerDevice(device) {
-  // thinq_config.json에 기기 저장
-  // 서버의 /api/devices/register 엔드포인트 호출 (없으면 config 저장으로 대체)
-  try {
-    // 1. 우선 전용 등록 API 시도
-    const res = await fetch('/api/devices/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        deviceId: deviceId(device),
-        name: deviceName(device),
-        type: deviceType(device),
-        model: deviceModel(device),
-        deviceInfo: device.deviceInfo ?? {},
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.ok) return { ok: true };
-    }
-  } catch (_) {}
-
-  // 2. 대체: devices 목록을 config에 저장
-  try {
-    const cfgRes = await fetch('/api/config');
-    const cfg = await cfgRes.json();
-    const devices = cfg.devices ?? [];
-    const id = deviceId(device);
-    const already = devices.find(d => (d.deviceId ?? d.id) === id);
-    if (!already) {
-      devices.push({
-        deviceId: id,
-        name: deviceName(device),
-        type: deviceType(device),
-        model: deviceModel(device),
-      });
-    }
-    const saveRes = await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...cfg, devices })
-    });
-    const saveData = await saveRes.json();
-    if (saveData.ok) return { ok: true };
-    return { ok: false, error: '설정 저장 실패' };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
-// ── 완료 화면 ─────────────────────────────────────────────
-function renderDone() {
-  const ok = addResults.filter(r => r.ok).length;
-  const fail = addResults.filter(r => !r.ok).length;
-
-  document.getElementById('doneSubText').innerHTML =
-    `<strong style="color:var(--green)">${ok}개</strong> 기기가 성공적으로 등록되었습니다.` +
-    (fail ? ` <strong style="color:var(--red)">${fail}개</strong> 실패.` : '');
-
-  const grid = document.getElementById('resultGrid');
-  grid.innerHTML = addResults.map(r => {
-    const icon = r.type === 'WASHER' ? '🫧' : r.type === 'DRYER' ? '🌀' : '📦';
-    const typeLabel = r.type === 'WASHER' ? '세탁기' : r.type === 'DRYER' ? '건조기' : r.type;
+  document.getElementById('content').className = 'grid';
+  document.getElementById('content').innerHTML = devices.map(device => {
+    const powerOn = device.power === 'ON';
     return `
-      <div class="result-item ${r.ok ? 'added' : 'failed'}">
-        <div class="result-label">${typeLabel}</div>
-        <div style="font-size:24px;margin:4px 0">${icon}</div>
-        <div class="result-name">${r.name}</div>
-        <div class="result-status ${r.ok ? 'ok' : 'fail'}">
-          ${r.ok ? '✅ 추가 완료' : `❌ ${r.error ?? '실패'}`}
+      <section class="card">
+        <div class="top">
+          <div class="icon">${iconFor(device.type)}</div>
+          <div>
+            <div class="name">${device.name}</div>
+            <div class="model">${device.model || device.type}</div>
+          </div>
         </div>
-      </div>`;
+        <div class="badges">
+          <div class="badge ${powerOn ? 'on' : 'off'}">${powerOn ? '전원 켜짐' : '전원 꺼짐'}</div>
+          <div class="badge ${device.running ? 'run' : 'idle'}">${runText(device)}</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">기기 종류</div>
+            <div class="value">${device.type === 'WASHER' ? '세탁기' : device.type === 'DRYER' ? '건조기' : device.type}</div>
+          </div>
+          <div class="stat">
+            <div class="label">남은 시간</div>
+            <div class="value">${device.remainingText}</div>
+          </div>
+        </div>
+      </section>
+    `;
   }).join('');
 }
 
-// ── API 헬퍼 ─────────────────────────────────────────────
-async function apiCall(method, path, body = null) {
+async function loadStatus() {
   try {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
-    if (body !== null) opts.body = JSON.stringify(body);
-    const res = await fetch(path, opts);
+    const res = await fetch('/api/public/status', { cache: 'no-store' });
     const data = await res.json();
-    if (!res.ok || data.error) {
-      console.error(`${method} ${path} →`, data.error ?? res.status);
-      return null;
+    if (!res.ok) {
+      // PAT 미설정 등 관리자 문제 — 공개 페이지에선 내부 에러 숨김
+      document.getElementById('content').className = 'empty';
+      document.getElementById('content').textContent = '현재 기기 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.';
+      document.getElementById('updated').textContent = '조회 실패';
+      return;
     }
-    return data;
-  } catch (e) {
-    console.error(`${method} ${path} →`, e);
-    return null;
+    render(data.devices || []);
+    document.getElementById('updated').textContent = `업데이트 ${new Date().toLocaleTimeString('ko-KR')}`;
+  } catch (err) {
+    document.getElementById('content').className = 'empty';
+    document.getElementById('content').textContent = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+    document.getElementById('updated').textContent = '연결 실패';
   }
 }
 
-// ── 초기화 ───────────────────────────────────────────────
-window.onload = async () => {
-  // 서버 PAT 확인
-  const cfg = await apiCall('GET', '/api/config');
-  if (cfg?.hasPat) {
-    document.getElementById('patInput').placeholder = '저장된 PAT 사용 (변경 시 입력)';
-    showBanner('banner-area', 'info', '서버에 저장된 PAT가 있습니다. 비워두면 기존 PAT로 탐색합니다.');
-    if (cfg.clientId) {
-      // 이미 설정 있으면 바로 탐색 버튼 강조
-    }
-  }
-  updateSteps(1);
-};
+loadStatus();
+setInterval(loadStatus, 30000);
 </script>
 </body>
 </html>
