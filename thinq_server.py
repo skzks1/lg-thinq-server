@@ -311,14 +311,15 @@ def _public_device(device, state):
     remain_total_seconds = (remain_hour * 3600) + (remain_minute * 60)
 
     return {
-        "id":            device.get("deviceId") or device.get("id"),
-        "name":          info.get("alias")      or device.get("alias")     or "기기",
-        "type":          _device_type(device),
-        "model":         info.get("modelName")  or device.get("modelName") or "",
-        "power":         "ON" if power_on else "OFF",
-        "runState":      run_state or "-",
-        "running":       is_running,
-        "remainingText": f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
+    "id":             device.get("deviceId") or device.get("id"),
+    "name":           info.get("alias")      or device.get("alias")     or "기기",
+    "type":           _device_type(device),
+    "model":          info.get("modelName")  or device.get("modelName") or "",
+    "power":          "ON" if power_on else "OFF",
+    "runState":       run_state or "-",
+    "running":        is_running,
+    "remainingText":  f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
+    "remainingSeconds": remain_total_seconds,  # 이 줄 추가
     }
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
