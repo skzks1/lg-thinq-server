@@ -319,7 +319,7 @@ def _public_device(device, state):
     "runState":       run_state or "-",
     "running":        is_running,
     "remainingText":  f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
-    "remainingSeconds": remain_total_seconds,  # 이 줄 추가
+    "remainingSeconds": remain_total_seconds, # 이 줄 추가
     }
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
@@ -593,7 +593,14 @@ def public_status():
             return public_devices
 
     try:
-        return jsonify({"ok": True, "devices": run_async(_do())})
+        import time
+        devices_result = run_async(_do())
+
+        # 관리자 등록 순서대로 정렬
+        order = [d.get("deviceId") for d in registered]
+        devices_result.sort(key=lambda d: order.index(d["id"]) if d["id"] in order else 999)
+
+        return jsonify({"ok": True, "devices": devices_result, "fetchedAt": time.time()})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
