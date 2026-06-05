@@ -370,6 +370,10 @@
       <button class="nav-item" onclick="navTo('notify')">
         <span class="ni">🔔</span> 알림 테스트
       </button>
+      <button class="nav-item" onclick="navTo('suggestions')">
+        <span class="ni">📬</span> 건의사항
+        <span id="suggestBadge" style="display:none;margin-left:auto;background:#e03560;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700"></span>
+      </button>
       <button class="nav-item" onclick="navTo('log')">
         <span class="ni">📋</span> 로그
       </button>
@@ -518,6 +522,19 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- 건의사항 -->
+      <div id="page-suggestions" class="tc">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0">📬 건의사항</div>
+            <button class="btn btn-ghost" style="padding:7px 14px;font-size:12px" onclick="loadSuggestions()">🔄 새로고침</button>
+          </div>
+          <div id="suggestList">
+            <div class="empty"><div class="ic">📭</div><p>불러오는 중...</p></div>
+          </div>
+        </div>
       </div>
 
       <!-- 로그 -->
@@ -800,9 +817,67 @@
     document.querySelectorAll('.tc').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`page-${name}`).classList.add('active');
-    const idx = { devices:0, status:1, settings:2, notify:3, log:4 }[name] ?? 0;
+    const idx = { devices:0, status:1, settings:2, notify:3, suggestions:4, log:5 }[name] ?? 0;
     document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
     if (name === 'notify') checkNotifPerm();
+    if (name === 'suggestions') loadSuggestions();
+  }
+
+  // ── 건의사항 ───────────────────────────────────────────────
+  async function loadSuggestions() {
+    document.getElementById('suggestList').innerHTML =
+      '<div class="empty"><div class="spin"></div></div>';
+    const res = await call('GET', '/api/suggestions');
+    const list = res?.suggestions ?? [];
+
+    // 읽지 않은 건의사항 뱃지
+    const unread = list.filter(s => !s.read).length;
+    const badge = document.getElementById('suggestBadge');
+    if (unread > 0) {
+      badge.style.display = '';
+      badge.textContent = unread;
+    } else {
+      badge.style.display = 'none';
+    }
+
+    if (!list.length) {
+      document.getElementById('suggestList').innerHTML =
+        '<div class="empty"><div class="ic">📭</div><p>접수된 건의사항이 없습니다.</p></div>';
+      return;
+    }
+
+    document.getElementById('suggestList').innerHTML = list.map(s => `
+      <div id="sg-${s.id}" style="
+        background:${s.read ? '#f8f9fb' : '#fff8f0'};
+        border:1.5px solid ${s.read ? '#e8e8f0' : '#ffcc80'};
+        border-radius:12px; padding:16px; margin-bottom:12px;
+        transition:all .2s;
+      ">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-weight:700;color:#1a1a2e;font-size:14px">🏠 ${s.room}호</span>
+            ${!s.read ? '<span style="background:#ff9800;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700">NEW</span>' : ''}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:12px;color:#aaa">${s.created_at}</span>
+            ${!s.read ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="markRead('${s.id}')">읽음</button>` : ''}
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteSuggestion('${s.id}')">삭제</button>
+          </div>
+        </div>
+        <div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-wrap">${s.content}</div>
+      </div>
+    `).join('');
+  }
+
+  async function markRead(sid) {
+    await call('POST', `/api/suggestions/${sid}/read`);
+    loadSuggestions();
+  }
+
+  async function deleteSuggestion(sid) {
+    if (!confirm('이 건의사항을 삭제할까요?')) return;
+    await call('DELETE', `/api/suggestions/${sid}`);
+    loadSuggestions();
   }
 
   // ── 설정 ──────────────────────────────────────────────────

@@ -291,7 +291,7 @@ def _device_type(device):
         return "WASHER"
     return raw or "DEVICE"
 
-def _public_device(device, state, custom_name=None):
+def _public_device(device, state):
     info  = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
     state = _first_state(state)
     values = " ".join(_deep_values(state))
@@ -308,18 +308,15 @@ def _public_device(device, state, custom_name=None):
     remain_hour   = timer.get("remainHour",   0) or 0
     remain_minute = timer.get("remainMinute", 0) or 0
 
-    remain_total_seconds = (remain_hour * 3600) + (remain_minute * 60)
-
     return {
-    "id":             device.get("deviceId") or device.get("id"),
-    "name":           custom_name or info.get("alias") or device.get("alias") or "기기",
-    "type":           _device_type(device),
-    "model":          info.get("modelName")  or device.get("modelName") or "",
-    "power":          "ON" if power_on else "OFF",
-    "runState":       run_state or "-",
-    "running":        is_running,
-    "remainingText":  f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
-    "remainingSeconds": remain_total_seconds, # 이 줄 추가
+        "id":            device.get("deviceId") or device.get("id"),
+        "name":          info.get("alias")      or device.get("alias")     or "기기",
+        "type":          _device_type(device),
+        "model":         info.get("modelName")  or device.get("modelName") or "",
+        "power":         "ON" if power_on else "OFF",
+        "runState":      run_state or "-",
+        "running":       is_running,
+        "remainingText": f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
     }
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
@@ -362,25 +359,6 @@ def register_device():
     CONFIG["devices"] = devices
     save_config()
     return jsonify({"ok": True, "deviceId": device_id})
-
-# ── 기기 이름 변경 ────────────────────────────────────────
-@app.route("/api/devices/<device_id>/rename", methods=["PATCH"])
-@admin_required
-def rename_device(device_id):
-    data = request.json or {}
-    new_name = data.get("name", "").strip()
-    if not new_name:
-        return jsonify({"error": "name이 없습니다"}), 400
-
-    devices = CONFIG.get("devices", [])
-    target = next((d for d in devices if d.get("deviceId") == device_id), None)
-    if not target:
-        return jsonify({"error": "등록된 기기를 찾을 수 없습니다"}), 404
-
-    target["name"] = new_name
-    CONFIG["devices"] = devices
-    save_config()
-    return jsonify({"ok": True, "deviceId": device_id, "name": new_name})
 
 # ── 기기 삭제 ──────────────────────────────────────────────
 @app.route("/api/devices/register/<device_id>", methods=["DELETE"])
@@ -604,24 +582,15 @@ def public_status():
                 device_id = device.get("deviceId") or device.get("id")
                 if not device_id:
                     continue
-                reg_info = next((d for d in registered if d.get("deviceId") == device_id), {})
-                custom_name = reg_info.get("name") or None
                 try:
                     state = await api.async_get_device_status(device_id)
                 except Exception:
                     state = {}
-                public_devices.append(_public_device(device, state, custom_name=custom_name))
+                public_devices.append(_public_device(device, state))
             return public_devices
 
     try:
-        import time
-        devices_result = run_async(_do())
-
-        # 관리자 등록 순서대로 정렬
-        order = [d.get("deviceId") for d in registered]
-        devices_result.sort(key=lambda d: order.index(d["id"]) if d["id"] in order else 999)
-
-        return jsonify({"ok": True, "devices": devices_result, "fetchedAt": time.time()})
+        return jsonify({"ok": True, "devices": run_async(_do())})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -645,6 +614,71 @@ def control_device(device_id):
         return jsonify({"ok": True, "result": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ── 건의사항 ───────────────────────────────────────────────
+SUGGESTIONS_FILE = "suggestions.json"
+
+def _load_suggestions() -> list:
+    if not os.path.exists(SUGGESTIONS_FILE):
+        return []
+    try:
+        with open(SUGGESTIONS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_suggestions(suggestions: list):
+    with open(SUGGESTIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(suggestions, f, ensure_ascii=False, indent=2)
+
+@app.route("/api/suggestions", methods=["POST"])
+def submit_suggestion():
+    """앱에서 건의사항 제출 (인증 불필요)"""
+    data    = request.json or {}
+    content = data.get("content", "").strip()
+    room    = data.get("room", "-")
+
+    if not content:
+        return jsonify({"error": "내용을 입력해주세요"}), 400
+
+    suggestions = _load_suggestions()
+    suggestions.insert(0, {
+        "id":      str(uuid.uuid4())[:8],
+        "room":    room,
+        "content": content,
+        "read":    False,
+        "created_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
+    })
+    _save_suggestions(suggestions)
+    return jsonify({"ok": True})
+
+@app.route("/api/suggestions", methods=["GET"])
+@admin_required
+def get_suggestions():
+    """관리자: 건의사항 목록 조회"""
+    suggestions = _load_suggestions()
+    return jsonify({"ok": True, "suggestions": suggestions})
+
+@app.route("/api/suggestions/<sid>/read", methods=["POST"])
+@admin_required
+def mark_suggestion_read(sid):
+    """관리자: 읽음 처리"""
+    suggestions = _load_suggestions()
+    for s in suggestions:
+        if s.get("id") == sid:
+            s["read"] = True
+            break
+    _save_suggestions(suggestions)
+    return jsonify({"ok": True})
+
+@app.route("/api/suggestions/<sid>", methods=["DELETE"])
+@admin_required
+def delete_suggestion(sid):
+    """관리자: 건의사항 삭제"""
+    suggestions = _load_suggestions()
+    suggestions = [s for s in suggestions if s.get("id") != sid]
+    _save_suggestions(suggestions)
+    return jsonify({"ok": True})
 
 # ── 실행 ──────────────────────────────────────────────────
 if __name__ == "__main__":
