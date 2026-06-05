@@ -615,6 +615,60 @@ def control_device(device_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── AI 건의사항 필터 ───────────────────────────────────────
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+def ai_filter_suggestion(content: str) -> dict:
+    """
+    Claude API로 건의사항 내용 검사.
+    반환: { "ok": bool, "reason": str }
+    """
+    if not ANTHROPIC_API_KEY:
+        # API 키 없으면 필터 건너뜀
+        return {"ok": True, "reason": ""}
+
+    prompt = f"""당신은 기숙사 건의사항 필터링 시스템입니다.
+아래 건의사항이 진짜 건의/불편사항인지, 장난/욕설/무의미한 내용인지 판단하세요.
+
+건의사항: "{content}"
+
+다음 기준으로 판단하세요:
+- 장난: 의미없는 반복 문자(ㅋㅋㅋ, ㅎㅎ, aaa 등), 테스트 문구, 무의미한 내용
+- 욕설/비하: 욕설, 특정인 비하, 혐오 표현
+- 스팸: 광고, 외부 링크, 관련 없는 내용
+- 정상: 시설 불편, 개선 요청, 규칙 제안 등 실질적 내용
+
+JSON 형식으로만 답하세요 (다른 말 금지):
+{{"ok": true/false, "reason": "차단 이유 (정상이면 빈 문자열)"}}"""
+
+    try:
+        res = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=10,
+        )
+        text = res.json()["content"][0]["text"].strip()
+        # JSON 파싱
+        import re
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+            return {"ok": bool(result.get("ok", True)), "reason": result.get("reason", "")}
+    except Exception as e:
+        print(f"[AI 필터] 오류: {e}")
+
+    # 필터 실패 시 통과
+    return {"ok": True, "reason": ""}
+
 # ── 건의사항 ───────────────────────────────────────────────
 SUGGESTIONS_FILE = "suggestions.json"
 
@@ -631,6 +685,26 @@ def _save_suggestions(suggestions: list):
     with open(SUGGESTIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(suggestions, f, ensure_ascii=False, indent=2)
 
+BLOCKED_FILE = "blocked_suggestions.json"
+
+def _load_blocked() -> list:
+    if not os.path.exists(BLOCKED_FILE):
+        return []
+    try:
+        with open(BLOCKED_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_blocked(data: list):
+    with open(BLOCKED_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+@app.route("/api/suggestions/blocked", methods=["GET"])
+@admin_required
+def get_blocked():
+    return jsonify({"ok": True, "blocked": _load_blocked()})
+
 @app.route("/api/suggestions", methods=["POST"])
 def submit_suggestion():
     """앱에서 건의사항 제출 (인증 불필요)"""
@@ -640,6 +714,30 @@ def submit_suggestion():
 
     if not content:
         return jsonify({"error": "내용을 입력해주세요"}), 400
+
+    # 최소 글자 수
+    if len(content) < 5:
+        return jsonify({"ok": False, "blocked": True, "reason": "너무 짧은 내용입니다. 5자 이상 입력해주세요."}), 400
+
+    # AI 필터링
+    filter_result = ai_filter_suggestion(content)
+    if not filter_result["ok"]:
+        print(f"[건의사항 차단] {room}호: {content[:30]}... / 이유: {filter_result['reason']}")
+        # 차단 내역 저장
+        blocked = _load_blocked()
+        blocked.insert(0, {
+            "id":      str(uuid.uuid4())[:8],
+            "room":    room,
+            "content": content,
+            "reason":  filter_result["reason"],
+            "created_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
+        })
+        _save_blocked(blocked)
+        return jsonify({
+            "ok": False,
+            "blocked": True,
+            "reason": filter_result["reason"] or "부적절한 내용으로 전송이 차단되었습니다.",
+        }), 400
 
     suggestions = _load_suggestions()
     suggestions.insert(0, {
