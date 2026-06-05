@@ -316,7 +316,9 @@ def _public_device(device, state):
         "power":         "ON" if power_on else "OFF",
         "runState":      run_state or "-",
         "running":       is_running,
-        "remainingText": f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
+        "remainingText":    f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
+        "remainingSeconds": int(remain_hour) * 3600 + int(remain_minute) * 60,
+        "fetchedAt":        __import__("time").time(),
     }
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
