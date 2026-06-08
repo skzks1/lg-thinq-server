@@ -385,6 +385,33 @@ def rename_device(device_id):
             return jsonify({"ok": True})
     return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
 
+# ── 이름으로 일괄 변경 (Shell 없이 사용 가능) ─────────────
+@app.route("/api/devices/rename-by-name", methods=["POST"])
+@admin_required
+def rename_by_name():
+    """
+    현재 이름을 기준으로 기기 이름을 일괄 변경합니다.
+    Body: { "mappings": { "현재이름": "새이름", ... } }
+    """
+    data     = request.json or {}
+    mappings = data.get("mappings", {})
+    if not mappings:
+        return jsonify({"error": "mappings가 없습니다"}), 400
+
+    devices  = CONFIG.get("devices", [])
+    changed  = []
+    for d in devices:
+        cur = d.get("name", "")
+        if cur in mappings:
+            d["name"] = mappings[cur]
+            changed.append({"from": cur, "to": mappings[cur]})
+
+    if changed:
+        CONFIG["devices"] = devices
+        save_config()
+
+    return jsonify({"ok": True, "changed": changed, "total": len(changed)})
+
 # ── 등록된 기기 목록 ───────────────────────────────────────
 @app.route("/api/devices/registered", methods=["GET"])
 @admin_required
