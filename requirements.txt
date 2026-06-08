@@ -5,3 +5,4 @@ thinqconnect==1.0.12
 requests
 pyOpenSSL
 awsiotsdk
+firebase-admin

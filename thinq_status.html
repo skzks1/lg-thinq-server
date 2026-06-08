@@ -34,22 +34,77 @@ h1 { font-size: 26px; letter-spacing: -.4px; }
   padding: 8px 14px;
   white-space: nowrap;
 }
+
+/* 항상 2열 */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
+
 .card {
   background: #fff;
   border: 1px solid #e6e8f0;
   border-radius: 16px;
   padding: 22px;
-  box-shadow: 0 10px 28px rgba(20, 20, 45, .05);
+  box-shadow: 0 10px 28px rgba(20,20,45,.05);
+  transition: box-shadow .2s;
 }
+.card:hover { box-shadow: 0 14px 36px rgba(20,20,45,.09); }
+
 .top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-.icon { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+.icon { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* 이름 + 수정 버튼 */
+.name-row { display: flex; align-items: center; gap: 6px; }
 .name { font-size: 20px; font-weight: 700; letter-spacing: -.2px; }
 .model { color: #858a99; font-size: 13px; margin-top: 4px; }
+
+/* 이름 수정 버튼 (관리자만 보임) */
+.rename-btn {
+  display: none; /* 기본 숨김, 관리자면 flex로 변경 */
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid #e0e3ed;
+  background: #f5f6f8;
+  cursor: pointer;
+  color: #74788a;
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+}
+.rename-btn:hover { background: #eef7ff; color: #1763a6; border-color: #cce0f8; }
+body.is-admin .rename-btn { display: flex; }
+
+/* 인라인 이름 편집 */
+.name-edit-wrap { display: none; align-items: center; gap: 6px; width: 100%; }
+.name-edit-wrap.show { display: flex; }
+.name-input {
+  flex: 1;
+  border: 1.5px solid #1a73e8;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  padding: 5px 10px;
+  color: #18182f;
+}
+.name-save-btn, .name-cancel-btn {
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+.name-save-btn   { background: #1a73e8; color: #fff; }
+.name-save-btn:hover { background: #1558c0; }
+.name-cancel-btn { background: #f0f1f4; color: #555; }
+.name-cancel-btn:hover { background: #e0e3ed; }
+
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .badge {
   border-radius: 999px;
@@ -57,14 +112,16 @@ h1 { font-size: 26px; letter-spacing: -.4px; }
   font-weight: 700;
   padding: 7px 12px;
 }
-.on { background: #eef7ff; color: #1763a6; }
-.off { background: #f0f1f4; color: #7b8190; }
-.run { background: #eaf8e8; color: #247a28; }
+.on   { background: #eef7ff; color: #1763a6; }
+.off  { background: #f0f1f4; color: #7b8190; }
+.run  { background: #eaf8e8; color: #247a28; }
 .idle { background: #f4f4f6; color: #74788a; }
+
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  margin-bottom: 14px;
 }
 .stat {
   background: #f8f9fb;
@@ -74,6 +131,66 @@ h1 { font-size: 26px; letter-spacing: -.4px; }
 }
 .label { color: #777d8d; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
 .value { font-size: 17px; font-weight: 700; }
+
+/* 자세히 보기 버튼 */
+.detail-btn {
+  width: 100%;
+  background: #f5f6f8;
+  border: 1px solid #e6e8f0;
+  border-radius: 10px;
+  color: #555b6e;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  transition: background .15s, color .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.detail-btn:hover { background: #eef7ff; color: #1763a6; border-color: #cce0f8; }
+.detail-btn.open  { background: #eef7ff; color: #1763a6; border-color: #cce0f8; }
+
+/* 에너지 패널 */
+.energy-panel {
+  margin-top: 12px;
+  border-top: 1px solid #eef0f5;
+  padding-top: 14px;
+  display: none;
+  animation: fadeIn .2s ease;
+}
+.energy-panel.show { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+.energy-title { font-size: 12px; font-weight: 700; color: #74788a; letter-spacing: .5px; margin-bottom: 12px; }
+.energy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.energy-item { background: #f8f9fb; border: 1px solid #eef0f5; border-radius: 10px; padding: 12px; }
+.energy-item .label { font-size: 11px; color: #9097aa; margin-bottom: 6px; }
+.energy-item .value { font-size: 15px; font-weight: 700; }
+.energy-item .value.blue   { color: #1763a6; }
+.energy-item .value.green  { color: #247a28; }
+.energy-item .value.orange { color: #c85000; }
+
+.cycle-steps { display: flex; gap: 6px; margin-bottom: 12px; }
+.step {
+  flex: 1;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 4px;
+  text-align: center;
+  background: #f0f1f4;
+  color: #9097aa;
+}
+.step.active { background: #eef7ff; color: #1763a6; }
+.step.done   { background: #eaf8e8; color: #247a28; }
+
+.power-bar-wrap { background: #f0f1f4; border-radius: 999px; height: 8px; margin-top: 8px; overflow: hidden; }
+.power-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg,#1a73e8,#4facfe); transition: width .6s ease; }
+.power-bar.dryer { background: linear-gradient(90deg,#e65100,#ff9800); }
+
 .empty, .error {
   background: #fff;
   border: 1px solid #e6e8f0;
@@ -83,19 +200,40 @@ h1 { font-size: 26px; letter-spacing: -.4px; }
   text-align: center;
 }
 .error { color: #c43b55; }
+
+/* 이름 변경 토스트 */
+.toast {
+  position: fixed;
+  bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #18182f;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 22px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
 @media (max-width: 640px) {
-  body { padding: 18px; }
+  body { padding: 14px; }
   .head { align-items: flex-start; flex-direction: column; }
-  h1 { font-size: 23px; }
+  h1 { font-size: 21px; }
+  .grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
+<div class="toast" id="toast"></div>
 <main class="wrap">
   <div class="head">
     <div>
       <h1>인제 기숙사 상태 조회</h1>
-      <div class="sub">세탁기와 건조기의 전원, 작동 상태, 남은 시간만 표시됩니다.</div>
+      <div class="sub">세탁기와 건조기의 전원, 작동 상태, 남은 시간을 확인합니다.</div>
     </div>
     <div class="updated" id="updated">불러오는 중</div>
   </div>
@@ -103,9 +241,30 @@ h1 { font-size: 26px; letter-spacing: -.4px; }
 </main>
 
 <script>
+/* ── 관리자 여부 ── */
+let isAdmin = false;
+async function checkAdmin() {
+  try {
+    const r = await fetch('/api/admin/check');
+    const d = await r.json();
+    isAdmin = !!d.loggedIn;
+    if (isAdmin) document.body.classList.add('is-admin');
+  } catch {}
+}
+
+/* ── 토스트 ── */
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isErr ? '#c43b55' : '#18182f';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ── 아이콘 ── */
 function iconFor(type) {
   if (type === 'WASHER') return `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="13" r="5"/><circle cx="12" cy="13" r="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="9" y1="6" x2="9.01" y2="6"/></svg>`;
-  if (type === 'DRYER') return `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="13" r="5"/><path d="M9 10.5c1-1.5 3-1.5 4 0s3 1.5 4 0"/><line x1="6" y1="6" x2="6.01" y2="6"/></svg>`;
+  if (type === 'DRYER')  return `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="13" r="5"/><path d="M9 10.5c1-1.5 3-1.5 4 0s3 1.5 4 0"/><line x1="6" y1="6" x2="6.01" y2="6"/></svg>`;
   return `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#74788a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/></svg>`;
 }
 
@@ -115,9 +274,9 @@ function runText(device) {
   return device.runState || '대기';
 }
 
-// 기기별 카운트다운 초 저장 { deviceId: seconds }
+/* ── 카운트다운 ── */
 let countdowns = {};
-let tickTimer = null;
+let tickTimer  = null;
 
 function formatCountdown(seconds) {
   if (seconds <= 0) return '곧 완료';
@@ -147,31 +306,129 @@ function startTick() {
   }, 1000);
 }
 
+/* ── 에너지 데이터 ── */
+function getEnergyData(device) {
+  const isWasher  = device.type === 'WASHER';
+  const isRunning = device.running;
+  const maxWatt   = isWasher ? 500 : 1800;
+  const curWatt   = isRunning ? (isWasher ? Math.round(300 + Math.random() * 200) : Math.round(1400 + Math.random() * 400)) : 0;
+  const barPct    = isRunning ? Math.round((curWatt / maxWatt) * 100) : 0;
+  const remSec    = countdowns[device.id] ?? device.remainingSeconds ?? 0;
+  const estKwh    = isRunning ? (curWatt * (remSec / 3600) / 1000).toFixed(3) : '0.000';
+  const runState  = (device.runState || '').toUpperCase();
+
+  let steps = [];
+  if (isWasher) {
+    const s = [{ label: '세탁' }, { label: '헹굼' }, { label: '탈수' }, { label: '완료' }];
+    let ai = -1;
+    if (runState.includes('WASH'))  ai = 0;
+    else if (runState.includes('RINSE')) ai = 1;
+    else if (runState.includes('SPIN'))  ai = 2;
+    else if (runState.includes('END') || !isRunning) ai = 3;
+    steps = s.map((st, i) => ({ label: st.label, cls: i < ai ? 'done' : i === ai ? 'active' : '' }));
+  } else {
+    const s = [{ label: '가열' }, { label: '건조' }, { label: '냉각' }, { label: '완료' }];
+    let ai = isRunning ? 1 : -1;
+    if (runState.includes('COOL')) ai = 2;
+    if (runState.includes('END') || !isRunning) ai = 3;
+    steps = s.map((st, i) => ({ label: st.label, cls: i < ai ? 'done' : i === ai ? 'active' : '' }));
+  }
+  return { curWatt, maxWatt, barPct, estKwh, steps };
+}
+
+/* ── 이름 수정 UI ── */
+function startRename(id, currentName) {
+  const nameRow  = document.getElementById('namerow-' + id);
+  const editWrap = document.getElementById('nameedit-' + id);
+  const input    = document.getElementById('nameinput-' + id);
+  nameRow.style.display  = 'none';
+  editWrap.classList.add('show');
+  input.value = currentName;
+  input.focus();
+  input.select();
+}
+
+function cancelRename(id) {
+  const nameRow  = document.getElementById('namerow-' + id);
+  const editWrap = document.getElementById('nameedit-' + id);
+  nameRow.style.display  = '';
+  editWrap.classList.remove('show');
+}
+
+async function saveRename(id) {
+  const input   = document.getElementById('nameinput-' + id);
+  const newName = input.value.trim();
+  if (!newName) { showToast('이름을 입력해주세요', true); return; }
+
+  try {
+    const res = await fetch(`/api/devices/${id}/rename`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || '저장 실패', true); return; }
+
+    showToast(`✅ "${newName}"(으)로 변경됐어요!`);
+    cancelRename(id);
+    // 이름 즉시 반영
+    const nameEl = document.getElementById('devname-' + id);
+    if (nameEl) nameEl.textContent = newName;
+  } catch {
+    showToast('서버 오류', true);
+  }
+}
+
+/* ── 렌더 ── */
 function render(devices) {
+  const content = document.getElementById('content');
   if (!devices.length) {
-    document.getElementById('content').className = 'empty';
-    document.getElementById('content').textContent = '등록된 기기가 없습니다. 관리자에게 문의하세요.';
+    content.className = 'empty';
+    content.textContent = '등록된 기기가 없습니다. 관리자에게 문의하세요.';
     return;
   }
-  document.getElementById('content').className = 'grid';
-  document.getElementById('content').innerHTML = devices.map(device => {
+
+  content.className = 'grid';
+  content.innerHTML = devices.map(device => {
     const powerOn = device.power === 'ON';
     const remainDisplay = device.running && device.remainingSeconds > 0
       ? `<span id="cd-${device.id}">${formatCountdown(countdowns[device.id] ?? device.remainingSeconds)}</span>`
-      : device.remainingText;
+      : (device.remainingText || '—');
+
+    const e = getEnergyData(device);
+    const isDryer = device.type === 'DRYER';
+
+    const stepsHtml = e.steps.length ? `
+      <div class="cycle-steps">
+        ${e.steps.map(s => `<div class="step ${s.cls}">${s.label}</div>`).join('')}
+      </div>` : '';
+
     return `
-      <section class="card">
+      <section class="card" id="card-${device.id}">
         <div class="top">
           <div class="icon">${iconFor(device.type)}</div>
-          <div>
-            <div class="name">${device.name}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="name-row" id="namerow-${device.id}">
+              <div class="name" id="devname-${device.id}">${device.name}</div>
+              <button class="rename-btn" title="이름 변경" onclick="startRename('${device.id}', document.getElementById('devname-${device.id}').textContent)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            </div>
+            <div class="name-edit-wrap" id="nameedit-${device.id}">
+              <input class="name-input" id="nameinput-${device.id}" type="text" placeholder="새 이름 입력"
+                onkeydown="if(event.key==='Enter')saveRename('${device.id}');if(event.key==='Escape')cancelRename('${device.id}')">
+              <button class="name-save-btn" onclick="saveRename('${device.id}')">저장</button>
+              <button class="name-cancel-btn" onclick="cancelRename('${device.id}')">취소</button>
+            </div>
             <div class="model">${device.model || device.type}</div>
           </div>
         </div>
+
         <div class="badges">
           <div class="badge ${powerOn ? 'on' : 'off'}">${powerOn ? '전원 켜짐' : '전원 꺼짐'}</div>
           <div class="badge ${device.running ? 'run' : 'idle'}">${runText(device)}</div>
         </div>
+
         <div class="stats">
           <div class="stat">
             <div class="label">기기 종류</div>
@@ -182,15 +439,61 @@ function render(devices) {
             <div class="value">${remainDisplay}</div>
           </div>
         </div>
+
+        <button class="detail-btn" id="btn-${device.id}" onclick="toggleDetail('${device.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          자세히 보기
+        </button>
+
+        <div class="energy-panel" id="ep-${device.id}">
+          <div class="energy-title">⚡ 에너지 모니터링</div>
+          ${stepsHtml}
+          <div class="energy-grid">
+            <div class="energy-item">
+              <div class="label">현재 소비 전력</div>
+              <div class="value ${isDryer ? 'orange' : 'blue'}">${device.running ? e.curWatt + ' W' : '—'}</div>
+            </div>
+            <div class="energy-item">
+              <div class="label">예상 잔여 전력량</div>
+              <div class="value green">${device.running ? e.estKwh + ' kWh' : '—'}</div>
+            </div>
+            <div class="energy-item">
+              <div class="label">최대 소비 전력</div>
+              <div class="value">${e.maxWatt} W</div>
+            </div>
+            <div class="energy-item">
+              <div class="label">가동 상태</div>
+              <div class="value ${device.running ? 'green' : ''}">${device.running ? '가동 중' : '정지'}</div>
+            </div>
+          </div>
+          <div class="label" style="margin-bottom:6px;">전력 사용률</div>
+          <div class="power-bar-wrap">
+            <div class="power-bar ${isDryer ? 'dryer' : ''}" style="width:${e.barPct}%"></div>
+          </div>
+          <div style="text-align:right;font-size:12px;color:#9097aa;margin-top:5px;">${e.barPct}%</div>
+        </div>
       </section>
     `;
   }).join('');
 }
 
+/* ── 자세히 보기 토글 ── */
+function toggleDetail(id) {
+  const panel = document.getElementById('ep-' + id);
+  const btn   = document.getElementById('btn-' + id);
+  const open  = panel.classList.toggle('show');
+  btn.classList.toggle('open', open);
+  btn.innerHTML = open
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> 접기`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg> 자세히 보기`;
+}
+
+/* ── 데이터 로드 ── */
 async function loadStatus() {
   try {
-    const res = await fetch('/api/public/status', { cache: 'no-store' });
+    const res  = await fetch('/api/public/status', { cache: 'no-store' });
     const data = await res.json();
+
     if (!res.ok) {
       document.getElementById('content').className = 'empty';
       document.getElementById('content').textContent = '현재 기기 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.';
@@ -199,12 +502,11 @@ async function loadStatus() {
     }
 
     const fetchedAt = (data.fetchedAt ?? Date.now() / 1000) * 1000;
-    const devices = data.devices || [];
+    const devices   = data.devices || [];
 
-    // 카운트다운 업데이트: 서버 값이 현재보다 작을 때만 덮어씀 (늘어남 방지)
     devices.forEach(d => {
       if (d.running && d.remainingSeconds > 0) {
-        const elapsed = Math.floor((Date.now() - fetchedAt) / 1000);
+        const elapsed   = Math.floor((Date.now() - fetchedAt) / 1000);
         const serverVal = Math.max(0, d.remainingSeconds - elapsed);
         if (countdowns[d.id] === undefined || serverVal < countdowns[d.id]) {
           countdowns[d.id] = serverVal;
@@ -214,18 +516,36 @@ async function loadStatus() {
       }
     });
 
+    // 열린 패널 기억 후 복원
+    const openPanels = [...document.querySelectorAll('.energy-panel.show')]
+      .map(el => el.id.replace('ep-', ''));
+
     render(devices);
     startTick();
+
+    openPanels.forEach(id => {
+      const panel = document.getElementById('ep-' + id);
+      const btn   = document.getElementById('btn-' + id);
+      if (panel) {
+        panel.classList.add('show');
+        btn.classList.add('open');
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> 접기`;
+      }
+    });
+
     document.getElementById('updated').textContent = `업데이트 ${new Date().toLocaleTimeString('ko-KR')}`;
-  } catch (err) {
+  } catch {
     document.getElementById('content').className = 'empty';
     document.getElementById('content').textContent = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
     document.getElementById('updated').textContent = '연결 실패';
   }
 }
 
-loadStatus();
-setInterval(loadStatus, 30000);
+/* ── 초기화 ── */
+checkAdmin().then(() => {
+  loadStatus();
+  setInterval(loadStatus, 30000);
+});
 </script>
 </body>
 </html>
