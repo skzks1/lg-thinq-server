@@ -373,6 +373,23 @@ def unregister_device(device_id):
     return jsonify({"ok": True, "removed": before - len(CONFIG["devices"])})
 
 # ── 등록된 기기 목록 ──────────────────────────────────────
+# ── 기기 이름 변경 ────────────────────────────────────────
+@app.route("/api/devices/<device_id>/rename", methods=["PATCH"])
+@admin_required
+def rename_device(device_id):
+    data     = request.json or {}
+    new_name = data.get("name", "").strip()
+    if not new_name:
+        return jsonify({"error": "이름을 입력해주세요"}), 400
+    devices = CONFIG.get("devices", [])
+    for d in devices:
+        if d.get("deviceId") == device_id:
+            d["name"] = new_name
+            CONFIG["devices"] = devices
+            save_config()
+            return jsonify({"ok": True})
+    return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
+
 @app.route("/api/devices/registered", methods=["GET"])
 @admin_required
 def get_registered_devices():
