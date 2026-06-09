@@ -220,7 +220,7 @@ def _device_type(device):
         return "WASHER"
     return raw or "DEVICE"
 
-def _public_device(device, state):
+def _public_device(device, state, reg_info=None):
     info  = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
     state = _first_state(state)
     values = " ".join(_deep_values(state))
@@ -233,21 +233,26 @@ def _public_device(device, state):
     power_on   = is_running or any(word in values for word in power_on_words) or str(run_state).upper() == "INITIAL"
 
     timer         = state.get("timer", {}) if isinstance(state.get("timer"), dict) else {}
-    remain_hour   = timer.get("remainHour",   0) or 0
-    remain_minute = timer.get("remainMinute", 0) or 0
+    remain_hour   = int(timer.get("remainHour",   0) or 0)
+    remain_minute = int(timer.get("remainMinute", 0) or 0)
+    remain_second = int(timer.get("remainSecond", 0) or 0)
 
-    remain_seconds = remain_hour * 3600 + remain_minute * 60
+    remain_seconds = remain_hour * 3600 + remain_minute * 60 + remain_second
+
+    # floor: registered info 우선, deviceInfo fallback
+    floor = str((reg_info or {}).get("floor") or info.get("floor") or device.get("floor") or "3")
 
     return {
-        "id":             device.get("deviceId") or device.get("id"),
-        "name":           info.get("alias")     or device.get("alias")     or "기기",
-        "type":           _device_type(device),
-        "model":          info.get("modelName") or device.get("modelName") or "",
-        "power":          "ON" if power_on else "OFF",
-        "runState":       run_state or "-",
-        "running":        is_running,
+        "id":               device.get("deviceId") or device.get("id"),
+        "name":             info.get("alias")     or device.get("alias")     or "기기",
+        "type":             _device_type(device),
+        "model":            info.get("modelName") or device.get("modelName") or "",
+        "floor":            floor,
+        "power":            "ON" if power_on else "OFF",
+        "runState":         run_state or "-",
+        "running":          is_running,
         "remainingSeconds": remain_seconds if is_running else 0,
-        "remainingText":  f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
+        "remainingText":    f"{remain_hour}시간 {remain_minute}분" if (remain_hour or remain_minute) else "-",
     }
 
 # ── 설정 조회/저장 ─────────────────────────────────────────
@@ -277,6 +282,7 @@ def register_device():
             "name":  data.get("name",  existing.get("name",  "기기")),
             "type":  data.get("type",  existing.get("type",  "DEVICE")),
             "model": data.get("model", existing.get("model", "")),
+            "floor": str(data.get("floor", existing.get("floor", "3"))),
         })
     else:
         devices.append({
@@ -284,6 +290,7 @@ def register_device():
             "name":     data.get("name",  "기기"),
             "type":     data.get("type",  "DEVICE"),
             "model":    data.get("model", ""),
+            "floor":    str(data.get("floor", "3")),
         })
 
     CONFIG["devices"] = devices
@@ -417,12 +424,18 @@ def get_device_state(device_id):
 @app.route("/api/public/status", methods=["GET"])
 def public_status():
     now = time.time()
+    floor_filter = request.args.get("floor", "")  # "2", "3", or "" (all)
 
-    # 캐시가 살아있으면 LG API 호출 없이 바로 반환
+    # 캐시가 살아있으면 LG API 호출 없이 바로 반환 (floor 필터는 캐시 후 적용)
     if _status_cache["data"] is not None and (now - _status_cache["ts"]) < _status_cache["ttl"]:
         cached = dict(_status_cache["data"])
         cached["cached"] = True
         cached["cacheAge"] = int(now - _status_cache["ts"])
+        if floor_filter:
+            cached["devices"] = [
+                d for d in cached.get("devices", [])
+                if str(d.get("floor", "3")) == str(floor_filter)
+            ]
         return jsonify(cached)
 
     registered = CONFIG.get("devices", [])
@@ -433,6 +446,8 @@ def public_status():
         return jsonify({"error": "관리자 설정이 필요합니다"}), 400
 
     registered_ids = {d.get("deviceId") for d in registered if d.get("deviceId")}
+    # registered 조회를 빠르게 하기 위한 dict
+    registered_by_id = {d.get("deviceId"): d for d in registered if d.get("deviceId")}
 
     async def _do():
         async with ClientSession() as session:
@@ -468,16 +483,24 @@ def public_status():
                     state = await api.async_get_device_status(device_id)
                 except Exception:
                     state = {}
-                public_devices.append(_public_device(device, state))
+                reg_info = registered_by_id.get(device_id)
+                public_devices.append(_public_device(device, state, reg_info=reg_info))
 
             return public_devices
 
     try:
         devices = run_async(_do())
         result  = {"ok": True, "devices": devices, "fetchedAt": now, "cached": False}
-        # 캐시 저장
+        # 캐시 저장 (전체 기기 캐시 — floor 필터는 반환 시 적용)
         _status_cache["data"] = result
         _status_cache["ts"]   = now
+        # floor 필터 적용 후 반환
+        if floor_filter:
+            result = dict(result)
+            result["devices"] = [
+                d for d in result.get("devices", [])
+                if str(d.get("floor", "3")) == str(floor_filter)
+            ]
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
