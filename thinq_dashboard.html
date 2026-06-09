@@ -154,7 +154,7 @@
 
   .device-card {
     background: #fff; border: 2px solid #e8e8f0;
-    border-radius: 16px; padding: 24px 20px;
+    border-radius: 16px; padding: 24px 20px 52px;
     cursor: pointer; transition: all .2s; position: relative;
   }
   .device-card:hover { border-color: #7c6bea; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(124,107,234,.12); }
@@ -342,6 +342,15 @@
     padding: 4px 10px; cursor: pointer; transition: all .15s;
   }
   .rename-btn:hover { border-color: #7c6bea; color: #7c6bea; background: #faf9ff; }
+
+  /* 기기 카드 삭제 버튼 */
+  .delete-btn {
+    position: absolute; bottom: 14px; left: 14px;
+    background: none; border: 1.5px solid #ffd6e0;
+    border-radius: 8px; color: #e03560; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; cursor: pointer; transition: all .15s;
+  }
+  .delete-btn:hover { background: #fff0f3; border-color: #e03560; }
   </style>
   </head>
   <body>
@@ -1110,6 +1119,7 @@
             ${powerOn ? '⏻' : '○'} ${powerText}
           </div>
           <div class="dc-id">${model}</div>
+          <button class="delete-btn" onclick="deleteDevice('${id}', '${name}', event)">🗑️ 삭제</button>
           <button class="rename-btn" onclick="openRenameModal(_renameDevices[${idx}], _renameDevices, event)">✏️ 이름 변경</button>
         </div>`;
     }).join('')}</div>`;
@@ -1403,6 +1413,24 @@
     } catch(e) {
       log(`${method} ${path} → 서버 미연결`, 'w');
       return null;
+    }
+  }
+
+  // ── 기기 삭제 ─────────────────────────────────────────────
+  async function deleteDevice(deviceId, deviceName, event) {
+    event.stopPropagation();
+    if (!confirm(`"${deviceName}" 기기를 삭제할까요?\n삭제 후에는 목록에서 사라집니다.`)) return;
+
+    const res = await call('DELETE', `/api/devices/register/${deviceId}`);
+    if (res) {
+      log(`기기 삭제: ${deviceName} (${deviceId})`, 'ok');
+      // 선택된 기기가 삭제된 기기면 초기화
+      if (selectedDevice && deviceIdOf(selectedDevice) === deviceId) {
+        selectedDevice = null;
+        document.getElementById('statusContent').innerHTML =
+          '<div class="empty"><div class="ic">🔍</div><p>기기 목록에서 기기를 선택하세요</p></div>';
+      }
+      await loadDevices();
     }
   }
 
