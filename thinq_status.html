@@ -358,7 +358,7 @@ function toggleDetail(id) {
 /* ── 데이터 로드 ── */
 async function loadStatus() {
   try {
-    const res  = await fetch('/api/public/status', { cache: 'no-store' });
+    const res  = await fetch('https://lg-thinq-server.onrender.com/api/public/status', { cache: 'no-store' });
     const data = await res.json();
 
     if (!res.ok) {
