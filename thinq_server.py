@@ -291,6 +291,24 @@ def register_device():
     _status_cache["data"] = None  # 기기 변경 시 캐시 초기화
     return jsonify({"ok": True, "deviceId": device_id})
 
+@app.route("/api/devices/<device_id>/rename", methods=["PATCH"])
+@admin_required
+def rename_device(device_id):
+    data = request.json or {}
+    new_name = data.get("name", "").strip()
+    if not new_name:
+        return jsonify({"error": "이름을 입력해주세요"}), 400
+
+    devices = CONFIG.get("devices", [])
+    device = next((d for d in devices if d.get("deviceId") == device_id), None)
+    if not device:
+        return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
+
+    device["name"] = new_name
+    save_config()
+    _status_cache["data"] = None
+    return jsonify({"ok": True, "deviceId": device_id, "name": new_name})
+
 @app.route("/api/devices/register/<device_id>", methods=["DELETE"])
 @admin_required
 def unregister_device(device_id):
