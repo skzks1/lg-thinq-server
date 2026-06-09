@@ -5,14 +5,14 @@
   "devices": [
     {
       "deviceId": "c20335053876170d795bcc4fe005ce58899dd8c47ea66afd615180cbaba8a0df",
-      "name": "3층 오른쪽 세탁기",
+      "name": "3층 왼쪽 세탁기",
       "type": "WASHER",
       "model": "F24NXT",
       "floor": "3"
     },
     {
       "deviceId": "93e303bafcc9bc86531a930afc1966977c7cd02e59eae111c184fead37855970",
-      "name": "3층 왼쪽 세탁기",
+      "name": "3층 오른쪽 세탁기",
       "type": "WASHER",
       "model": "F24NXT",
       "floor": "3"
