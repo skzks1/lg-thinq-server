@@ -7,7 +7,7 @@ import json
 from aiohttp import ClientSession
 from thinqconnect import ThinQApi
 
-PAT       = "thinqpat_4d2ba1f6cd474b3d7e194c80897af6471e7c6f18042f11ee9128"
+PAT       = "thinqpat_61054ee0fce833c4868f8265cb83905217c1bf6d2a34f248b8ea"
 CLIENT_ID = "808996f2-38d2-47f7-82cb-4c34edde5965"
 COUNTRY   = "KR"
 
