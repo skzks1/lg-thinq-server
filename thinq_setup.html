@@ -552,6 +552,19 @@ body {
       </div>
     </div>
 
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="font-size:13px;font-weight:700;color:var(--text2)">🏢 층 선택</label>
+      <select id="floorSelect" style="
+        background:var(--surface2);border:1.5px solid var(--border2);border-radius:10px;
+        color:var(--text);font-size:14px;font-weight:600;padding:8px 16px;
+        outline:none;cursor:pointer;
+      ">
+        <option value="2">2층</option>
+        <option value="3" selected>3층</option>
+      </select>
+      <span style="font-size:12px;color:var(--text3)">선택한 기기가 해당 층으로 등록됩니다</span>
+    </div>
+
     <div class="btn-row" style="margin-bottom:16px">
       <button class="btn btn-accent" onclick="addSelected()" id="addSelectedBtn" disabled>
         <span>➕</span> 선택한 기기 추가
@@ -919,6 +932,7 @@ async function registerDevice(device) {
         name: deviceName(device),
         type: deviceType(device),
         model: deviceModel(device),
+        floor: document.getElementById('floorSelect')?.value ?? '3',
         deviceInfo: device.deviceInfo ?? {},
       })
     });

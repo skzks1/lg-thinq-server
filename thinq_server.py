@@ -142,7 +142,13 @@ almost_done_sent = False
 complete_sent = False
 
 app = Flask(__name__, static_folder=".")
-CORS(app, supports_credentials=True, origins=["https://lg-thinq-server.onrender.com", "http://localhost:8888", "http://localhost:3000"])
+CORS(app, supports_credentials=True, origins=[
+    "https://lg-thinq-server.onrender.com",
+    "https://injego.netlify.app",
+    "https://injego2.netlify.app",
+    "http://localhost:8888",
+    "http://localhost:3000",
+])
 PUBLIC_SITE_URL = "https://lg-thinq-server.onrender.com"
 CONFIG_FILE = "thinq_config.json"
 
@@ -351,6 +357,7 @@ def register_device():
             "name":  data.get("name",  existing.get("name",  "기기")),
             "type":  data.get("type",  existing.get("type",  "DEVICE")),
             "model": data.get("model", existing.get("model", "")),
+            "floor": data.get("floor", existing.get("floor", "3")),
         })
     else:
         devices.append({
@@ -358,6 +365,7 @@ def register_device():
             "name":  data.get("name",  "기기"),
             "type":  data.get("type",  "DEVICE"),
             "model": data.get("model", ""),
+            "floor": data.get("floor", "3"),
         })
 
     CONFIG["devices"] = devices
@@ -566,7 +574,10 @@ def get_device_state(device_id):
 # ── 공개 상태 조회 ──────────────────────────────────────────
 @app.route("/api/public/status", methods=["GET"])
 def public_status():
+    floor_filter = request.args.get("floor")  # ?floor=2 or ?floor=3
     registered = CONFIG.get("devices", [])
+    if floor_filter:
+        registered = [d for d in registered if str(d.get("floor", "3")) == str(floor_filter)]
     if not registered:
         return jsonify({"ok": True, "devices": [], "notice": "등록된 기기가 없습니다"})
     if not CONFIG["pat"] or not CONFIG["client_id"]:

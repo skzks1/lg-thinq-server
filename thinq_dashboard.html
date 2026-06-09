@@ -3,7 +3,7 @@
   <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LG ThinQ Dashboard</title>
+  <title>ThinQ 관리자 대시보드 — 인제고 기숙사</title>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -352,8 +352,8 @@
       <div class="brand">
         <div class="brand-icon">🏠</div>
         <div>
-          <div class="brand-name">ThinQ</div>
-          <div class="brand-sub">Home Dashboard</div>
+          <div class="brand-name">ThinQ 관리자</div>
+          <div class="brand-sub" id="sidebarFloorLabel">전체 기기</div>
         </div>
       </div>
 
@@ -392,6 +392,17 @@
           <div class="page-title">LG <span>ThinQ</span> 대시보드</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
+          <!-- 층 선택 탭 -->
+          <div style="display:flex;background:#f0f0f7;border-radius:12px;padding:4px;gap:4px">
+            <button id="floorBtn2" onclick="switchFloor(2)"
+              style="padding:7px 18px;border-radius:9px;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#888">
+              2층
+            </button>
+            <button id="floorBtn3" onclick="switchFloor(3)"
+              style="padding:7px 18px;border-radius:9px;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:#1a1a2e;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)">
+              3층
+            </button>
+          </div>
           <a href="/setup" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:#c8f04a;color:#0d1008;font-size:12px;font-weight:700;text-decoration:none;border:none;cursor:pointer;transition:all .15s" onmouseover="this.style.background='#b8e030'" onmouseout="this.style.background='#c8f04a'">
             ➕ 기기 추가
           </a>
@@ -401,6 +412,25 @@
           </div>
         </div>
       </div>
+
+      <!-- 층 전환 알림 배너 -->
+      <div id="floorBanner" style="
+        display:flex;align-items:center;gap:10px;
+        background:#f5f2ff;border:1.5px solid #c8b8ff;
+        border-radius:12px;padding:12px 18px;margin-bottom:20px;
+        font-size:13px;color:#5a3aaa;font-weight:600;
+        animation:fadeSlideIn .25s ease;
+      ">
+        <span style="font-size:18px">🏢</span>
+        <span id="floorBannerText">3층 세탁실 기기를 조회 중입니다</span>
+        <span style="margin-left:auto;font-size:12px;color:#9080cc;font-weight:500">기기 목록을 새로 불러오면 해당 층 기기만 표시됩니다</span>
+      </div>
+      <style>
+        @keyframes fadeSlideIn {
+          from { opacity:0; transform:translateY(-6px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+      </style>
 
       <!-- 기기 관리 -->
       <div id="page-devices" class="tc active">
@@ -643,9 +673,46 @@
   let selectedDevice = null;
   let deviceStates = {};
   let demoMode = false;
+  let currentFloor = 3;   // 기본값: 3층
+
+  // ── 층 전환 ───────────────────────────────────────────────
+  function switchFloor(floor) {
+    currentFloor = floor;
+
+    // 버튼 스타일
+    const active   = { background:'#1a1a2e', color:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,.15)' };
+    const inactive = { background:'transparent', color:'#888', boxShadow:'none' };
+    const applyStyle = (el, styles) => Object.assign(el.style, styles);
+
+    applyStyle(document.getElementById('floorBtn2'), floor===2 ? active : inactive);
+    applyStyle(document.getElementById('floorBtn3'), floor===3 ? active : inactive);
+
+    // 배너 + 사이드바 레이블
+    const label = `${floor}층`;
+    document.getElementById('floorBannerText').textContent = `${floor}층 세탁실 기기를 조회 중입니다`;
+    document.getElementById('sidebarFloorLabel').textContent = `${floor}층 세탁실`;
+
+    // 상태 초기화 (층이 바뀌면 이전 기기 목록 무효)
+    selectedDevice = null;
+    deviceStates = {};
+
+    // 기기 목록 초기화 표시
+    document.getElementById('devList').innerHTML = `
+      <div class="empty">
+        <div class="ic">🏢</div>
+        <p>${floor}층 기기 목록을 불러오려면 아래 버튼을 누르세요</p>
+      </div>`;
+    document.getElementById('statusContent').innerHTML =
+      '<div class="empty"><div class="ic">🔍</div><p>기기 목록에서 기기를 선택하세요</p></div>';
+
+    log(`층 전환 → ${floor}층`, 'in');
+  }
 
   // ── 초기화 ────────────────────────────────────────────────
   window.onload = async () => {
+    // 층 탭 초기 상태 (3층 기본)
+    switchFloor(3);
+
     try {
       const cfg = await call('GET', '/api/config');
       if (cfg) {
@@ -948,18 +1015,57 @@
 
     let devices = null;
     try {
-      const res = await call('GET', '/api/devices');
-      const found = extractDeviceList(res?.devices);
-      if (found.length) devices = found;
+      // 공개 API로 현재 층 기기만 조회 (관리자 세션 포함)
+      const res = await call('GET', `/api/public/status?floor=${currentFloor}`);
+      if (res?.devices?.length) {
+        // public/status는 이미 가공된 형태 → 관리자용 전체 목록도 함께 조회
+        const adminRes = await call('GET', '/api/devices/registered');
+        const allReg = adminRes?.devices ?? [];
+        // 현재 층 필터
+        const filtered = allReg.filter(d => String(d.floor ?? '3') === String(currentFloor));
+        if (filtered.length) {
+          devices = filtered.map(reg => ({
+            deviceId: reg.deviceId,
+            deviceInfo: { alias: reg.name, deviceType: reg.type, modelName: reg.model },
+            floor: reg.floor,
+          }));
+        }
+      }
     } catch {}
 
-    // API 실패 시 더미 데이터
+    // 등록 기기 직접 조회 fallback
+    if (!devices) {
+      try {
+        const adminRes = await call('GET', '/api/devices/registered');
+        const allReg = adminRes?.devices ?? [];
+        const filtered = allReg.filter(d => String(d.floor ?? '3') === String(currentFloor));
+        if (filtered.length) {
+          devices = filtered.map(reg => ({
+            deviceId: reg.deviceId,
+            deviceInfo: { alias: reg.name, deviceType: reg.type, modelName: reg.model },
+            floor: reg.floor,
+          }));
+        }
+      } catch {}
+    }
+
+    // 최후 fallback: 더미 데이터
     if (!devices) {
       log('데모 데이터로 표시합니다', 'w');
       devices = MOCK_DEVICES;
       demoMode = true;
     } else {
       demoMode = false;
+    }
+
+    if (!devices.length) {
+      document.getElementById('devList').innerHTML = `
+        <div class="empty">
+          <div class="ic">📭</div>
+          <p>${currentFloor}층에 등록된 기기가 없습니다.<br>기기 추가 버튼으로 등록해주세요.</p>
+        </div>`;
+      setConn(true);
+      return;
     }
 
     await Promise.all(devices.map(async d => {

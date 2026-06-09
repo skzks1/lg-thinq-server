@@ -7,25 +7,29 @@
       "deviceId": "c20335053876170d795bcc4fe005ce58899dd8c47ea66afd615180cbaba8a0df",
       "name": "3층 오른쪽 세탁기",
       "type": "WASHER",
-      "model": "F24NXT"
+      "model": "F24NXT",
+      "floor": "3"
     },
     {
       "deviceId": "93e303bafcc9bc86531a930afc1966977c7cd02e59eae111c184fead37855970",
       "name": "3층 왼쪽 세탁기",
       "type": "WASHER",
-      "model": "F24NXT"
+      "model": "F24NXT",
+      "floor": "3"
     },
     {
       "deviceId": "0e1bd19aadae1a6b74c68e45997d5b0a5b8dd153e6f3a540d8d8dd2be2565c16",
       "name": "3층 왼쪽 건조기",
       "type": "DRYER",
-      "model": "RH17KXT"
+      "model": "RH17KXT",
+      "floor": "3"
     },
     {
       "deviceId": "bfcc1b0252986aa9c1d5e1710c63648c5c7d0b369ebca46ff05e96a8f534bdb8",
       "name": "3층 오른쪽 건조기",
       "type": "DRYER",
-      "model": "RH17KXT"
+      "model": "RH17KXT",
+      "floor": "3"
     }
   ]
 }
