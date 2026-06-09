@@ -11,6 +11,7 @@ import hashlib
 import secrets
 import time
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for
+from flask_cors import CORS
 from functools import wraps
 from aiohttp import ClientSession
 from thinqconnect import ThinQApi
@@ -58,6 +59,9 @@ almost_done_sent = False
 complete_sent = False
 
 app = Flask(__name__, static_folder=".")
+CORS(app, resources={
+    r"/api/public/*": {"origins": "*"}
+})
 
 PUBLIC_SITE_URL = "https://lg-thinq-server.onrender.com"
 CONFIG_FILE = "thinq_config.json"
