@@ -6,3 +6,4 @@ requests
 pyOpenSSL
 awsiotsdk
 firebase-admin
+flask-cors
