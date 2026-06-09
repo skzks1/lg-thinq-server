@@ -12,6 +12,7 @@ import json
 import hashlib
 import secrets
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, url_for
+from flask_cors import CORS
 from functools import wraps
 from aiohttp import ClientSession
 from thinqconnect import ThinQApi
@@ -22,6 +23,8 @@ import requests
 try:
     import firebase_admin
     from firebase_admin import credentials, messaging as fb_messaging
+    # FIREBASE_CREDENTIALS_JSON 환경변수에 서비스 계정 JSON 문자열을 넣어두세요
+    # Render 대시보드 → Environment → FIREBASE_CREDENTIALS_JSON
     _fb_cred_json = os.environ.get("FIREBASE_CREDENTIALS_JSON", "")
     if _fb_cred_json and not firebase_admin._apps:
         _cred_dict = json.loads(_fb_cred_json)
@@ -35,10 +38,11 @@ except ImportError:
     FCM_ENABLED = False
     print("[FCM] firebase-admin 패키지가 없습니다. pip install firebase-admin 후 재시작하세요.")
 
-# ── FCM 토큰 저장소 ────────────────────────────────────────
+# ── FCM 토큰 저장소 (메모리 + 파일 백업) ──────────────────
 FCM_TOKENS_FILE = "fcm_tokens.json"
 
 def _load_fcm_tokens() -> dict:
+    """{ token: { "label": str, "role": "user"|"admin" } }"""
     if not os.path.exists(FCM_TOKENS_FILE):
         return {}
     try:
@@ -54,6 +58,10 @@ def _save_fcm_tokens(tokens: dict):
 FCM_TOKENS: dict = _load_fcm_tokens()
 
 def send_push_notification(title: str, body: str, role: str = "all"):
+    """
+    FCM 푸시 알림 전송.
+    role: "all" | "user" | "admin"
+    """
     if not FCM_ENABLED:
         print(f"[FCM 비활성화] 알림 전송 건너뜀: {title} / {body}")
         return
@@ -88,16 +96,20 @@ def send_push_notification(title: str, body: str, role: str = "all"):
 
     print(f"[FCM] 전송 완료: 성공 {success}, 실패 {fail}")
 
-# ── 카카오 알림 ────────────────────────────────────────────
+# ── 카카오 알림 (기존 유지) ────────────────────────────────
 def send_kakao_message(message):
     access_token = "카카오토큰"
     url = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
-    headers = {"Authorization": f"Bearer {access_token}"}
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
     data = {
         "template_object": json.dumps({
             "object_type": "text",
             "text": message,
-            "link": {"web_url": "https://lg-thinq-server.onrender.com/"}
+            "link": {
+                "web_url": "https://lg-thinq-server.onrender.com/"
+            }
         })
     }
     requests.post(url, headers=headers, data=data)
@@ -130,6 +142,7 @@ almost_done_sent = False
 complete_sent = False
 
 app = Flask(__name__, static_folder=".")
+CORS(app, supports_credentials=True, origins=["https://lg-thinq-server.onrender.com", "http://localhost:8888", "http://localhost:3000"])
 PUBLIC_SITE_URL = "https://lg-thinq-server.onrender.com"
 CONFIG_FILE = "thinq_config.json"
 
@@ -269,7 +282,7 @@ def _deep_values(value):
     return [str(value).upper()]
 
 def _device_type(device):
-    info  = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
+    info = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
     raw   = str(info.get("deviceType") or device.get("deviceType") or "").upper()
     alias = str(info.get("alias")      or device.get("alias")      or "").upper()
     model = str(info.get("modelName")  or device.get("modelName")  or "").upper()
@@ -280,11 +293,7 @@ def _device_type(device):
         return "WASHER"
     return raw or "DEVICE"
 
-def _public_device(device, state, custom_name=None):
-    """
-    custom_name: thinq_config.json에 저장된 사용자 지정 이름.
-                 지정된 경우 LG API 이름보다 우선 사용.
-    """
+def _public_device(device, state):
     info  = device.get("deviceInfo", {}) if isinstance(device, dict) else {}
     state = _first_state(state)
     values = " ".join(_deep_values(state))
@@ -301,17 +310,14 @@ def _public_device(device, state, custom_name=None):
     remain_hour   = timer.get("remainHour",   0) or 0
     remain_minute = timer.get("remainMinute", 0) or 0
 
-    # ── 이름 우선순위: 사용자 지정 이름 > LG API alias ──
-    name = custom_name or info.get("alias") or device.get("alias") or "기기"
-
     return {
-        "id":               device.get("deviceId") or device.get("id"),
-        "name":             name,
-        "type":             _device_type(device),
-        "model":            info.get("modelName")  or device.get("modelName") or "",
-        "power":            "ON" if power_on else "OFF",
-        "runState":         run_state or "-",
-        "running":          is_running,
+        "id":            device.get("deviceId") or device.get("id"),
+        "name":          info.get("alias")      or device.get("alias")     or "기기",
+        "type":          _device_type(device),
+        "model":         info.get("modelName")  or device.get("modelName") or "",
+        "power":         "ON" if power_on else "OFF",
+        "runState":      run_state or "-",
+        "running":       is_running,
         "remainingText":    f"{remain_hour}시간 {remain_minute}분" if remain_hour or remain_minute else "-",
         "remainingSeconds": int(remain_hour) * 3600 + int(remain_minute) * 60,
         "fetchedAt":        __import__("time").time(),
@@ -322,7 +328,7 @@ def _public_device(device, state, custom_name=None):
 @admin_required
 def get_config():
     return jsonify({
-        "hasPat":   bool(CONFIG["pat"]),
+        "hasPat":  bool(CONFIG["pat"]),
         "clientId": CONFIG["client_id"],
         "country":  CONFIG["country"],
         "devices":  CONFIG.get("devices", []),
@@ -368,7 +374,8 @@ def unregister_device(device_id):
     save_config()
     return jsonify({"ok": True, "removed": before - len(CONFIG["devices"])})
 
-# ── 기기 이름 변경 ─────────────────────────────────────────
+# ── 등록된 기기 목록 ──────────────────────────────────────
+# ── 기기 이름 변경 ────────────────────────────────────────
 @app.route("/api/devices/<device_id>/rename", methods=["PATCH"])
 @admin_required
 def rename_device(device_id):
@@ -385,34 +392,6 @@ def rename_device(device_id):
             return jsonify({"ok": True})
     return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
 
-# ── 이름으로 일괄 변경 (Shell 없이 사용 가능) ─────────────
-@app.route("/api/devices/rename-by-name", methods=["POST"])
-@admin_required
-def rename_by_name():
-    """
-    현재 이름을 기준으로 기기 이름을 일괄 변경합니다.
-    Body: { "mappings": { "현재이름": "새이름", ... } }
-    """
-    data     = request.json or {}
-    mappings = data.get("mappings", {})
-    if not mappings:
-        return jsonify({"error": "mappings가 없습니다"}), 400
-
-    devices  = CONFIG.get("devices", [])
-    changed  = []
-    for d in devices:
-        cur = d.get("name", "")
-        if cur in mappings:
-            d["name"] = mappings[cur]
-            changed.append({"from": cur, "to": mappings[cur]})
-
-    if changed:
-        CONFIG["devices"] = devices
-        save_config()
-
-    return jsonify({"ok": True, "changed": changed, "total": len(changed)})
-
-# ── 등록된 기기 목록 ───────────────────────────────────────
 @app.route("/api/devices/registered", methods=["GET"])
 @admin_required
 def get_registered_devices():
@@ -422,7 +401,7 @@ def get_registered_devices():
 @admin_required
 def set_config():
     data = request.json or {}
-    if "pat"      in data: CONFIG["pat"]       = data["pat"]
+    if "pat"     in data: CONFIG["pat"]       = data["pat"]
     if "clientId" in data: CONFIG["client_id"] = data["clientId"]
     if "country"  in data: CONFIG["country"]   = data["country"]
     if "devices"  in data: CONFIG["devices"]   = data["devices"]
@@ -460,12 +439,17 @@ def register_client():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── FCM 토큰 등록 ──────────────────────────────────────────
+# ── FCM 토큰 등록 (앱에서 호출) ───────────────────────────
 @app.route("/api/fcm/register", methods=["POST"])
 def fcm_register():
+    """
+    앱 최초 실행 시 호출.
+    Body: { "token": "FCM토큰", "role": "user"|"admin", "label": "기기 이름(선택)" }
+    role은 앱에서 판단해서 넘겨주면 됩니다.
+    """
     data  = request.json or {}
     token = data.get("token", "").strip()
-    role  = data.get("role", "user")
+    role  = data.get("role", "user")   # "user" | "admin"
     label = data.get("label", "")
 
     if not token:
@@ -478,7 +462,7 @@ def fcm_register():
     print(f"[FCM] 토큰 등록: role={role}, label={label}")
     return jsonify({"ok": True})
 
-# ── FCM 토큰 삭제 ──────────────────────────────────────────
+# ── FCM 토큰 삭제 (앱 로그아웃 시 호출) ──────────────────
 @app.route("/api/fcm/unregister", methods=["POST"])
 def fcm_unregister():
     data  = request.json or {}
@@ -488,7 +472,7 @@ def fcm_unregister():
         _save_fcm_tokens(FCM_TOKENS)
     return jsonify({"ok": True})
 
-# ── FCM 토큰 목록 조회 ─────────────────────────────────────
+# ── FCM 토큰 목록 조회 (관리자 전용) ──────────────────────
 @app.route("/api/fcm/tokens", methods=["GET"])
 @admin_required
 def fcm_token_list():
@@ -498,7 +482,7 @@ def fcm_token_list():
     ]
     return jsonify({"ok": True, "count": len(FCM_TOKENS), "tokens": summary})
 
-# ── 알림 테스트 API ────────────────────────────────────────
+# ── 알림 테스트 API (카카오 + FCM 동시) ───────────────────
 @app.route("/api/notify/kakao", methods=["POST"])
 @admin_required
 def notify_kakao():
@@ -509,12 +493,15 @@ def notify_kakao():
     full_message = message + tip
 
     errors = []
+
+    # 카카오 (기존)
     try:
         send_kakao_message(full_message)
     except Exception as e:
         errors.append(f"카카오: {e}")
 
-    role = data.get("role", "all")
+    # FCM 푸시 (신규) - role 지정 없으면 전체 전송
+    role = data.get("role", "all")  # "all" | "user" | "admin"
     try:
         send_push_notification(title="기숙사 세탁실", body=message, role=role)
     except Exception as e:
@@ -524,10 +511,13 @@ def notify_kakao():
         return jsonify({"ok": False, "errors": errors}), 500
     return jsonify({"ok": True})
 
-# ── FCM 단독 알림 ──────────────────────────────────────────
+# ── FCM만 단독 알림 (앱 전용) ─────────────────────────────
 @app.route("/api/notify/push", methods=["POST"])
 @admin_required
 def notify_push():
+    """
+    Body: { "title": str, "body": str, "role": "all"|"user"|"admin" }
+    """
     data  = request.json or {}
     title = data.get("title", "기숙사 세탁실")
     body  = data.get("body",  "알림")
@@ -539,7 +529,7 @@ def notify_push():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── 기기 목록 (LG API) ─────────────────────────────────────
+# ── 기기 목록 ──────────────────────────────────────────────
 @app.route("/api/devices", methods=["GET"])
 @admin_required
 def get_devices():
@@ -584,13 +574,6 @@ def public_status():
 
     registered_ids = {d.get("deviceId") for d in registered if d.get("deviceId")}
 
-    # ── config에 저장된 사용자 지정 이름 맵 ──────────────
-    custom_name_map = {
-        d.get("deviceId"): d.get("name")
-        for d in registered
-        if d.get("deviceId") and d.get("name")
-    }
-
     async def _do():
         async with ClientSession() as session:
             api = get_api(session)
@@ -624,9 +607,7 @@ def public_status():
                     state = await api.async_get_device_status(device_id)
                 except Exception:
                     state = {}
-                # ── 사용자 지정 이름을 우선 적용 ──────────
-                custom_name = custom_name_map.get(device_id)
-                public_devices.append(_public_device(device, state, custom_name=custom_name))
+                public_devices.append(_public_device(device, state))
             return public_devices
 
     try:
@@ -659,7 +640,12 @@ def control_device(device_id):
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def ai_filter_suggestion(content: str) -> dict:
+    """
+    Claude API로 건의사항 내용 검사.
+    반환: { "ok": bool, "reason": str }
+    """
     if not ANTHROPIC_API_KEY:
+        # API 키 없으면 필터 건너뜀
         return {"ok": True, "reason": ""}
 
     prompt = f"""당신은 기숙사 건의사항 필터링 시스템입니다.
@@ -692,6 +678,7 @@ JSON 형식으로만 답하세요 (다른 말 금지):
             timeout=10,
         )
         text = res.json()["content"][0]["text"].strip()
+        # JSON 파싱
         import re
         match = re.search(r'\{.*\}', text, re.DOTALL)
         if match:
@@ -700,6 +687,7 @@ JSON 형식으로만 답하세요 (다른 말 금지):
     except Exception as e:
         print(f"[AI 필터] 오류: {e}")
 
+    # 필터 실패 시 통과
     return {"ok": True, "reason": ""}
 
 # ── 건의사항 ───────────────────────────────────────────────
@@ -740,18 +728,23 @@ def get_blocked():
 
 @app.route("/api/suggestions", methods=["POST"])
 def submit_suggestion():
+    """앱에서 건의사항 제출 (인증 불필요)"""
     data    = request.json or {}
     content = data.get("content", "").strip()
     room    = data.get("room", "-")
 
     if not content:
         return jsonify({"error": "내용을 입력해주세요"}), 400
+
+    # 최소 글자 수
     if len(content) < 5:
         return jsonify({"ok": False, "blocked": True, "reason": "너무 짧은 내용입니다. 5자 이상 입력해주세요."}), 400
 
+    # AI 필터링
     filter_result = ai_filter_suggestion(content)
     if not filter_result["ok"]:
         print(f"[건의사항 차단] {room}호: {content[:30]}... / 이유: {filter_result['reason']}")
+        # 차단 내역 저장
         blocked = _load_blocked()
         blocked.insert(0, {
             "id":      str(uuid.uuid4())[:8],
@@ -781,12 +774,14 @@ def submit_suggestion():
 @app.route("/api/suggestions", methods=["GET"])
 @admin_required
 def get_suggestions():
+    """관리자: 건의사항 목록 조회"""
     suggestions = _load_suggestions()
     return jsonify({"ok": True, "suggestions": suggestions})
 
 @app.route("/api/suggestions/<sid>/read", methods=["POST"])
 @admin_required
 def mark_suggestion_read(sid):
+    """관리자: 읽음 처리"""
     suggestions = _load_suggestions()
     for s in suggestions:
         if s.get("id") == sid:
@@ -798,6 +793,7 @@ def mark_suggestion_read(sid):
 @app.route("/api/suggestions/<sid>", methods=["DELETE"])
 @admin_required
 def delete_suggestion(sid):
+    """관리자: 건의사항 삭제"""
     suggestions = _load_suggestions()
     suggestions = [s for s in suggestions if s.get("id") != sid]
     _save_suggestions(suggestions)

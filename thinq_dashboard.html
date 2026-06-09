@@ -1249,7 +1249,7 @@
     btn.textContent = '발송 중...';
 
     try {
-      const res = await fetch('/api/notify/kakao', {
+      const res = await fetch(API_BASE + '/api/notify/kakao', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ message: msg, device_type: dtype }),
@@ -1282,12 +1282,14 @@
   }
 
   // ── API 호출 헬퍼 ──────────────────────────────────────────
+  const API_BASE = 'https://lg-thinq-server.onrender.com';
+
   async function call(method, path, body=null) {
     log(`${method} ${path}`, 'in');
-    const opts = { method, headers: {'Content-Type':'application/json'} };
+    const opts = { method, headers: {'Content-Type':'application/json'}, credentials: 'include' };
     if (body) opts.body = JSON.stringify(body);
     try {
-      const res = await fetch(path, opts);
+      const res = await fetch(API_BASE + path, opts);
       const data = await res.json();
       if (!res.ok || data.error) { log(`오류: ${data.error || res.status}`, 'er'); return null; }
       log(`${method} ${path} → OK`, 'ok');
@@ -1398,7 +1400,7 @@
   async function adminLogout() {
     if (!confirm('로그아웃 하시겠습니까?')) return;
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      await fetch(API_BASE + '/api/admin/logout', { method: 'POST' });
     } catch(_) {}
     window.location.href = '/login';
   }
