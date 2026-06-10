@@ -51,6 +51,13 @@
       "type": "DRYER",
       "model": "RH17KXT",
       "floor": "2"
+    },
+    {
+      "deviceId": "a1b72b2c1d4e7892e2e6b745ab11c24c6810b36cdf6adf61934a0be7a63e45ef",
+      "name": "2층 오른쪽 건조기",
+      "type": "DRYER",
+      "model": "RH17KXT",
+      "floor": "2"
     }
   ]
 }

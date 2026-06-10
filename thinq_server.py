@@ -244,7 +244,7 @@ def _public_device(device, state, reg_info=None):
 
     return {
         "id":               device.get("deviceId") or device.get("id"),
-        "name":             info.get("alias")     or device.get("alias")     or "기기",
+        "name":             (reg_info or {}).get("name") or info.get("alias") or device.get("alias") or "기기",
         "type":             _device_type(device),
         "model":            info.get("modelName") or device.get("modelName") or "",
         "floor":            floor,
