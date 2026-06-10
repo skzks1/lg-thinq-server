@@ -226,8 +226,8 @@ def _public_device(device, state, reg_info=None):
     values = " ".join(_deep_values(state))
 
     run_state = state.get("runState", {}).get("currentState") if isinstance(state.get("runState"), dict) else None
-    running_words  = ["RUNNING","WORKING","WASHING","RINSING","SPINNING","DRYING","COOLING"]
-    power_on_words = ["ON","POWER_ON","POWERON","INITIAL",*running_words]
+    running_words  = ["RUNNING","WORKING","WASHING","RINSING","SPINNING","DRYING","COOLING","INITIAL"]
+    power_on_words = ["ON","POWER_ON","POWERON",*running_words]
 
     is_running = any(word in values for word in running_words) or str(run_state).upper() in running_words
     power_on   = is_running or any(word in values for word in power_on_words) or str(run_state).upper() == "INITIAL"
@@ -502,24 +502,6 @@ def public_status():
                 if str(d.get("floor", "3")) == str(floor_filter)
             ]
         return jsonify(result)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ── 디버그: 기기 raw 상태 조회 (관리자 전용, 나중에 삭제) ──
-@app.route("/api/debug/device/<device_id>", methods=["GET"])
-@admin_required
-def debug_device(device_id):
-    async def _do():
-        async with ClientSession() as sess:
-            api = get_api(sess)
-            try:
-                state = await api.async_get_device_status(device_id)
-            except Exception as e:
-                state = {"error": str(e)}
-            return state
-    try:
-        raw = run_async(_do())
-        return jsonify({"deviceId": device_id, "rawState": raw})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
