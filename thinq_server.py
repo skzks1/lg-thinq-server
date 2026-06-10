@@ -244,7 +244,7 @@ def _public_device(device, state, reg_info=None):
 
     return {
         "id":               device.get("deviceId") or device.get("id"),
-        "name":             (reg_info or {}).get("name") or info.get("alias") or device.get("alias") or "기기",
+        "name":             info.get("alias")     or device.get("alias")     or "기기",
         "type":             _device_type(device),
         "model":            info.get("modelName") or device.get("modelName") or "",
         "floor":            floor,
@@ -502,6 +502,24 @@ def public_status():
                 if str(d.get("floor", "3")) == str(floor_filter)
             ]
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── 디버그: 기기 raw 상태 조회 (관리자 전용, 나중에 삭제) ──
+@app.route("/api/debug/device/<device_id>", methods=["GET"])
+@admin_required
+def debug_device(device_id):
+    async def _do():
+        async with ClientSession() as sess:
+            api = get_api(sess)
+            try:
+                state = await api.async_get_device_status(device_id)
+            except Exception as e:
+                state = {"error": str(e)}
+            return state
+    try:
+        raw = run_async(_do())
+        return jsonify({"deviceId": device_id, "rawState": raw})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
