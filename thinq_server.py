@@ -70,7 +70,7 @@ CONFIG_FILE = "thinq_config.json"
 _status_cache = {
     "data": None,       # 캐시된 응답
     "ts": 0,            # 마지막 갱신 시각 (time.time())
-    "ttl": 60,          # 캐시 유효 시간 (초) — 필요시 늘려도 됨
+    "ttl": 300,         # 캐시 유효 시간 5분 — API 호출 횟수 절약
 }
 
 # ── 관리자 인증 ────────────────────────────────────────────
@@ -244,7 +244,7 @@ def _public_device(device, state, reg_info=None):
 
     return {
         "id":               device.get("deviceId") or device.get("id"),
-        "name":             (reg_info or {}).get("name") or info.get("alias") or device.get("alias") or "기기",
+        "name":             info.get("alias")     or device.get("alias")     or "기기",
         "type":             _device_type(device),
         "model":            info.get("modelName") or device.get("modelName") or "",
         "floor":            floor,
@@ -486,10 +486,6 @@ def public_status():
                 reg_info = registered_by_id.get(device_id)
                 public_devices.append(_public_device(device, state, reg_info=reg_info))
 
-            # config 순서대로 정렬
-            config_order = {d.get("deviceId"): i for i, d in enumerate(registered)}
-            public_devices.sort(key=lambda d: config_order.get(d.get("id"), 999))
-
             return public_devices
 
     try:
@@ -507,7 +503,22 @@ def public_status():
             ]
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err_str = str(e)
+        # API 호출 한도 초과 시 — 만료된 캐시라도 반환
+        if "1314" in err_str or "Exceeded" in err_str:
+            stale = _status_cache.get("data")
+            if stale:
+                result = dict(stale)
+                result["cached"] = True
+                result["stale"]  = True
+                result["notice"] = "API 호출 한도 초과 — 이전 데이터를 표시합니다"
+                if floor_filter:
+                    result["devices"] = [
+                        d for d in result.get("devices", [])
+                        if str(d.get("floor", "3")) == str(floor_filter)
+                    ]
+                return jsonify(result)
+        return jsonify({"error": err_str}), 500
 
 # ── 캐시 강제 초기화 (관리자 전용) ────────────────────────
 @app.route("/api/admin/cache/clear", methods=["POST"])
