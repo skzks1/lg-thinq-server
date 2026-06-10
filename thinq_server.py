@@ -226,8 +226,8 @@ def _public_device(device, state, reg_info=None):
     values = " ".join(_deep_values(state))
 
     run_state = state.get("runState", {}).get("currentState") if isinstance(state.get("runState"), dict) else None
-    running_words  = ["RUNNING","WORKING","WASHING","RINSING","SPINNING","DRYING","COOLING","INITIAL"]
-    power_on_words = ["ON","POWER_ON","POWERON",*running_words]
+    running_words  = ["RUNNING","WORKING","WASHING","RINSING","SPINNING","DRYING","COOLING"]
+    power_on_words = ["ON","POWER_ON","POWERON","INITIAL",*running_words]
 
     is_running = any(word in values for word in running_words) or str(run_state).upper() in running_words
     power_on   = is_running or any(word in values for word in power_on_words) or str(run_state).upper() == "INITIAL"
@@ -244,7 +244,7 @@ def _public_device(device, state, reg_info=None):
 
     return {
         "id":               device.get("deviceId") or device.get("id"),
-        "name":             info.get("alias")     or device.get("alias")     or "기기",
+        "name":             (reg_info or {}).get("name") or info.get("alias") or device.get("alias") or "기기",
         "type":             _device_type(device),
         "model":            info.get("modelName") or device.get("modelName") or "",
         "floor":            floor,
@@ -485,6 +485,10 @@ def public_status():
                     state = {}
                 reg_info = registered_by_id.get(device_id)
                 public_devices.append(_public_device(device, state, reg_info=reg_info))
+
+            # config 순서대로 정렬
+            config_order = {d.get("deviceId"): i for i, d in enumerate(registered)}
+            public_devices.sort(key=lambda d: config_order.get(d.get("id"), 999))
 
             return public_devices
 
