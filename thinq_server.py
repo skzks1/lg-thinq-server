@@ -316,6 +316,47 @@ def rename_device(device_id):
     _status_cache["data"] = None
     return jsonify({"ok": True, "deviceId": device_id, "name": new_name})
 
+@app.route("/api/devices/<device_id>/floor", methods=["PATCH"])
+@admin_required
+def change_device_floor(device_id):
+    data = request.json or {}
+    new_floor = str(data.get("floor", "")).strip()
+    if new_floor not in ("2", "3"):
+        return jsonify({"error": "floor는 '2' 또는 '3'이어야 합니다"}), 400
+
+    devices = CONFIG.get("devices", [])
+    device = next((d for d in devices if d.get("deviceId") == device_id), None)
+    if not device:
+        return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
+
+    device["floor"] = new_floor
+    save_config()
+    _status_cache["data"] = None
+    return jsonify({"ok": True, "deviceId": device_id, "floor": new_floor})
+
+@app.route("/api/devices/<old_id>/replace-id", methods=["PATCH"])
+@admin_required
+def replace_device_id(old_id):
+    data = request.json or {}
+    new_id = str(data.get("newDeviceId", "")).strip()
+    if not new_id:
+        return jsonify({"error": "newDeviceId가 없습니다"}), 400
+
+    devices = CONFIG.get("devices", [])
+
+    # 새 ID가 이미 존재하면 충돌 방지
+    if any(d.get("deviceId") == new_id for d in devices):
+        return jsonify({"error": "이미 등록된 deviceId입니다"}), 409
+
+    device = next((d for d in devices if d.get("deviceId") == old_id), None)
+    if not device:
+        return jsonify({"error": "기기를 찾을 수 없습니다"}), 404
+
+    device["deviceId"] = new_id
+    save_config()
+    _status_cache["data"] = None
+    return jsonify({"ok": True, "oldId": old_id, "newId": new_id})
+
 @app.route("/api/devices/register/<device_id>", methods=["DELETE"])
 @admin_required
 def unregister_device(device_id):
