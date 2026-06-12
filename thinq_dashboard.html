@@ -791,7 +791,7 @@
 
   // ── 자동 새로고침 ─────────────────────────────────────────
   // 일정 주기로 기기 목록/상태를 백그라운드에서 갱신 (수동 새로고침 불필요)
-  const AUTO_REFRESH_MS = 20000;
+  const AUTO_REFRESH_MS = 10000;
   setInterval(() => {
     loadDevices(true);
     if (selectedDevice) showStatus(selectedDevice, true);
