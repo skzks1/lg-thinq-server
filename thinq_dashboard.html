@@ -784,11 +784,22 @@
       '<div class="empty"><div class="ic">🔍</div><p>기기 목록에서 기기를 선택하세요</p></div>';
 
     log(`층 전환 → ${floor}층`, 'in');
+
+    // 층 전환 시 자동으로 기기 목록 로드
+    loadDevices();
   }
+
+  // ── 자동 새로고침 ─────────────────────────────────────────
+  // 일정 주기로 기기 목록/상태를 백그라운드에서 갱신 (수동 새로고침 불필요)
+  const AUTO_REFRESH_MS = 20000;
+  setInterval(() => {
+    loadDevices(true);
+    if (selectedDevice) showStatus(selectedDevice, true);
+  }, AUTO_REFRESH_MS);
 
   // ── 초기화 ────────────────────────────────────────────────
   window.onload = async () => {
-    // 층 탭 초기 상태 (3층 기본)
+    // 층 탭 초기 상태 (3층 기본, 자동 로드 포함)
     switchFloor(3);
 
     try {
@@ -1087,17 +1098,19 @@
   }
 
   // ── 기기 목록 ─────────────────────────────────────────────
-  async function loadDevices() {
-    document.getElementById('devList').innerHTML =
-      '<div class="empty"><div class="spin"></div></div>';
+  async function loadDevices(silent=false) {
+    if (!silent) {
+      document.getElementById('devList').innerHTML =
+        '<div class="empty"><div class="spin"></div></div>';
+    }
 
     let devices = null;
     try {
       // 공개 API로 현재 층 기기만 조회 (관리자 세션 포함)
-      const res = await call('GET', `/api/public/status?floor=${currentFloor}`);
+      const res = await call('GET', `/api/public/status?floor=${currentFloor}`, null, silent);
       if (res?.devices?.length) {
         // public/status는 이미 가공된 형태 → 관리자용 전체 목록도 함께 조회
-        const adminRes = await call('GET', '/api/devices/registered');
+        const adminRes = await call('GET', '/api/devices/registered', null, silent);
         const allReg = adminRes?.devices ?? [];
         // 현재 층 필터
         const filtered = allReg.filter(d => String(d.floor ?? '3') === String(currentFloor));
@@ -1114,7 +1127,7 @@
     // 등록 기기 직접 조회 fallback
     if (!devices) {
       try {
-        const adminRes = await call('GET', '/api/devices/registered');
+        const adminRes = await call('GET', '/api/devices/registered', null, silent);
         const allReg = adminRes?.devices ?? [];
         const filtered = allReg.filter(d => String(d.floor ?? '3') === String(currentFloor));
         if (filtered.length) {
@@ -1129,7 +1142,7 @@
 
     // 최후 fallback: 더미 데이터
     if (!devices) {
-      log('데모 데이터로 표시합니다', 'w');
+      if (!silent) log('데모 데이터로 표시합니다', 'w');
       devices = MOCK_DEVICES;
       demoMode = true;
     } else {
@@ -1148,16 +1161,16 @@
 
     await Promise.all(devices.map(async d => {
       const id = deviceIdOf(d);
-      if (id === '-' || deviceStates[id]) return;
-      deviceStates[id] = await fetchDeviceState(id);
+      if (id === '-') return;
+      deviceStates[id] = await fetchDeviceState(id, silent);
     }));
     renderDevices(devices);
     setConn(true);
   }
 
-  async function fetchDeviceState(id) {
+  async function fetchDeviceState(id, quiet=false) {
     try {
-      const res = await call('GET', `/api/devices/${id}/state`);
+      const res = await call('GET', `/api/devices/${id}/state`, null, quiet);
       if (res?.state) return normalizeDeviceState(res.state);
     } catch {}
     return demoMode ? (MOCK_STATE[id] ?? {}) : {};
@@ -1222,13 +1235,15 @@
   }
 
   // ── 상태 조회 ─────────────────────────────────────────────
-  async function showStatus(device) {
+  async function showStatus(device, silent=false) {
     const id = deviceIdOf(device);
 
-    document.getElementById('statusContent').innerHTML =
-      '<div class="empty"><div class="spin"></div></div>';
+    if (!silent) {
+      document.getElementById('statusContent').innerHTML =
+        '<div class="empty"><div class="spin"></div></div>';
+    }
 
-    const state = await fetchDeviceState(id);
+    const state = await fetchDeviceState(id, silent);
     deviceStates[id] = state;
 
     document.getElementById('statusContent').innerHTML = renderStatus(device, state);
@@ -1486,18 +1501,18 @@
   // ── API 호출 헬퍼 ──────────────────────────────────────────
   const API_BASE = 'https://lg-thinq-server.onrender.com';
 
-  async function call(method, path, body=null) {
-    log(`${method} ${path}`, 'in');
+  async function call(method, path, body=null, quiet=false) {
+    if (!quiet) log(`${method} ${path}`, 'in');
     const opts = { method, headers: {'Content-Type':'application/json'}, credentials: 'include' };
     if (body) opts.body = JSON.stringify(body);
     try {
       const res = await fetch(API_BASE + path, opts);
       const data = await res.json();
-      if (!res.ok || data.error) { log(`오류: ${data.error || res.status}`, 'er'); return null; }
-      log(`${method} ${path} → OK`, 'ok');
+      if (!res.ok || data.error) { if (!quiet) log(`오류: ${data.error || res.status}`, 'er'); return null; }
+      if (!quiet) log(`${method} ${path} → OK`, 'ok');
       return data;
     } catch(e) {
-      log(`${method} ${path} → 서버 미연결`, 'w');
+      if (!quiet) log(`${method} ${path} → 서버 미연결`, 'w');
       return null;
     }
   }
