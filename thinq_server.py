@@ -536,10 +536,8 @@ def public_status():
     try:
         devices = run_async(_do())
         result  = {"ok": True, "devices": devices, "fetchedAt": now, "cached": False}
-        # 캐시 저장 (전체 기기 캐시 — floor 필터는 반환 시 적용)
         _status_cache["data"] = result
         _status_cache["ts"]   = now
-        # floor 필터 적용 후 반환
         if floor_filter:
             result = dict(result)
             result["devices"] = [
@@ -548,7 +546,21 @@ def public_status():
             ]
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err_str = str(e)
+        # API 호출 한도 초과 또는 PAT 오류 시 — 캐시 데이터라도 반환
+        stale = _status_cache.get("data")
+        if stale:
+            result = dict(stale)
+            result["cached"] = True
+            result["stale"]  = True
+            result["notice"] = "API 오류 — 이전 데이터를 표시합니다"
+            if floor_filter:
+                result["devices"] = [
+                    d for d in result.get("devices", [])
+                    if str(d.get("floor", "3")) == str(floor_filter)
+                ]
+            return jsonify(result)
+        return jsonify({"error": err_str}), 500
 
 # ── 캐시 강제 초기화 (관리자 전용) ────────────────────────
 @app.route("/api/admin/cache/clear", methods=["GET", "POST"])
