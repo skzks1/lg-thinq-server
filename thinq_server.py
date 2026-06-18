@@ -641,7 +641,8 @@ def control_device(device_id):
 # ── 실행 ──────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 50)
-    print(" LG ThinQ 대시보드 서버 시작""""
+    print(" LG ThinQ 대시보드 서버 시작")
+"""
 LG ThinQ Flask 서버
 실행: python thinq_server.py
 """
@@ -1283,10 +1284,10 @@ def control_device(device_id):
 
 # ── 실행 ──────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("=" * 50)"""
-LG ThinQ Flask 서버
-실행: python thinq_server.py
-"""
+    print("=" * 50)
+    print(" LG ThinQ Flask 서버")
+    print(" 실행: python thinq_server.py")
+    print("=" * 50)
 
 import asyncio
 import uuid
@@ -1932,7 +1933,8 @@ if __name__ == "__main__":
     print(f" 캐시 TTL: {_status_cache['ttl']}초")
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)"""
+    app.run(host='0.0.0.0', port=port)
+"""
 LG ThinQ Flask 서버
 실행: python thinq_server.py
 """
@@ -2588,7 +2590,7 @@ if __name__ == "__main__":
     print(f" 캐시 TTL: {_status_cache['ttl']}초")
     print("=" * 50)
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port))
+    app.run(host='0.0.0.0', port=port)
     print(f" 공개 상태조회: {PUBLIC_SITE_URL}")
     print(f" 관리자 사이트: {PUBLIC_SITE_URL}/admin")
     print(f" 캐시 TTL: {_status_cache['ttl']}초")
