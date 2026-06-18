@@ -411,7 +411,8 @@ async function loadStatus() {
 
 /* ── 초기화 ── */
 loadStatus();
-setInterval(loadStatus, 10000);
+// 10초(10000) 주기 조회를 60초(60000)로 대폭 늦추어 LG API 차단을 방지합니다.
+setInterval(loadStatus, 60000); 
 </script>
 </body>
 </html>

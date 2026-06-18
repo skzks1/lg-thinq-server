@@ -1,5 +1,5 @@
 """
-LG ThinQ Flask 서버
+LG ThinQ Flask 서버 (디스크 영구 백업 및 예외 보완 버전)
 실행: python thinq_server.py
 """
 
@@ -65,28 +65,44 @@ CORS(app, resources={
 
 PUBLIC_SITE_URL = "https://lg-thinq-server.onrender.com"
 CONFIG_FILE = "thinq_config.json"
+STATES_BACKUP_FILE = "thinq_states_backup.json"  # 영구 파일 백업 명시
 
-# ── 상태 캐시 (LG API 호출 횟수 초과 방지기능 보완) ──
-# 층별 필터에 맞춤화된 캐시 격리를 위해 층별 전용 캐시 사전으로 세분화합니다.
+# ── 상태 캐시 (호출 횟수 한도 방지를 위해 기본 유효시간을 3분으로 연장) ──
 _status_caches = {
-    "":  {"data": None, "ts": 0, "ttl": 30},
-    "2": {"data": None, "ts": 0, "ttl": 30},
-    "3": {"data": None, "ts": 0, "ttl": 30},
+    "":  {"data": None, "ts": 0, "ttl": 180},  # 180초(3분) 캐시
+    "2": {"data": None, "ts": 0, "ttl": 180},
+    "3": {"data": None, "ts": 0, "ttl": 180},
 }
 
-# 기기 목록 캐시 (/api/devices)
 _devices_cache = {
     "data": None,
     "ts": 0,
     "ttl": 60,
 }
 
-# 기기 개별 상태 캐시 (/api/devices/<id>/state)
 _state_cache: dict = {}
 _STATE_CACHE_TTL = 20
 
-# 임시 API 통신 불가 시에도 기존 정상 가동 정보를 유지하기 위한 캐시 백업소
+# 메모리 상태 백업소
 _last_known_states = {}
+
+# ── 백업 디스크 로드/저장 ──────────────────────────────────
+def load_states_backup():
+    global _last_known_states
+    if os.path.exists(STATES_BACKUP_FILE):
+        try:
+            with open(STATES_BACKUP_FILE, "r", encoding="utf-8") as f:
+                _last_known_states = json.load(f)
+                print(f"[DEBUG] 파일 백업으로부터 {len(_last_known_states)}개의 기기 상태를 복구했습니다.")
+        except Exception as e:
+            print(f"상태 백업 파일을 불러오지 못했습니다: {e}")
+
+def save_states_backup():
+    try:
+        with open(STATES_BACKUP_FILE, "w", encoding="utf-8") as f:
+            json.dump(_last_known_states, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"상태 백업을 저장하지 못했습니다: {e}")
 
 # ── 관리자 인증 ────────────────────────────────────────────
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
@@ -134,7 +150,9 @@ def load_config():
     CONFIG["country"] = saved.get("country", CONFIG["country"])
     CONFIG["devices"] = saved.get("devices", [])
 
+# 파일 기동시 로드 수행
 load_config()
+load_states_backup()
 
 # ── 헬퍼 ──────────────────────────────────────────────────
 def get_api(session):
@@ -233,7 +251,6 @@ def _device_type(device):
     return raw or "DEVICE"
 
 def _find_deep_value(obj, target_key):
-    """중첩된 사전/리스트 구조 내에서 특정 키의 값을 재귀적으로 검색합니다."""
     if isinstance(obj, dict):
         if target_key in obj:
             return obj[target_key]
@@ -253,7 +270,6 @@ def _public_device(device, state, reg_info=None):
     state = _first_state(state)
     values = " ".join(_deep_values(state))
 
-    # 중첩 구조 파싱을 위해 재귀 탐색 함수 활용 고도화
     run_state_dict = _find_deep_value(state, "runState")
     run_state = None
     if isinstance(run_state_dict, dict):
@@ -267,7 +283,6 @@ def _public_device(device, state, reg_info=None):
     is_running = any(word in values for word in running_words) or str(run_state).upper() in running_words
     power_on   = is_running or any(word in values for word in power_on_words) or str(run_state).upper() == "INITIAL"
 
-    # 중첩 구조 속 타이머 찾기
     timer = _find_deep_value(state, "timer") or {}
     if not isinstance(timer, dict):
         timer = {}
@@ -276,7 +291,6 @@ def _public_device(device, state, reg_info=None):
     remain_minute = int(timer.get("remainMinute", 0) or 0)
     remain_second = int(timer.get("remainSecond", 0) or 0)
 
-    # remainHour가 없고 relativeMinuteToStop만 있는 일부 모델 대비 예외 보완
     if remain_hour == 0 and remain_minute == 0:
         remain_minute = int(timer.get("relativeMinuteToStop", 0) or 0)
 
@@ -371,7 +385,7 @@ def rename_device(device_id):
     save_config()
     for f in _status_caches:
         _status_caches[f]["data"] = None
-    return jsonify({"ok": True, "deviceId": device_id, "name": new_name})
+    return jsonify({"ok": True, "device_id": device_id, "name": new_name})
 
 @app.route("/api/devices/<device_id>/floor", methods=["PATCH"])
 @admin_required
@@ -390,7 +404,7 @@ def change_device_floor(device_id):
     save_config()
     for f in _status_caches:
         _status_caches[f]["data"] = None
-    return jsonify({"ok": True, "deviceId": device_id, "floor": new_floor})
+    return jsonify({"ok": True, "device_id": device_id, "floor": new_floor})
 
 @app.route("/api/devices/<old_id>/replace-id", methods=["PATCH"])
 @admin_required
@@ -557,14 +571,15 @@ def get_device_state(device_id):
     try:
         result = run_async(_do())
         _state_cache[device_id] = {"data": result, "ts": now}
-        _last_known_states[device_id] = result  # 정상 상태일 때 최종 정보 보존소 백업
+        _last_known_states[device_id] = result  # 정상 상태 최종 백업 갱신
+        save_states_backup()  # 파일 영구 저장
         return jsonify({"ok": True, "state": result})
     except Exception as e:
         err_str = str(e)
         if "1314" in err_str or "exceeded" in err_str.lower():
             if cached:
                 cached["ts"] = now
-        # API 오류가 나더라도 보존소에 데이터가 있다면 백업하여 에러 응답 차단
+        
         backup_state = _last_known_states.get(device_id)
         if backup_state:
             return jsonify({"ok": True, "state": backup_state, "cached": True, "stale": True})
@@ -572,7 +587,7 @@ def get_device_state(device_id):
             return jsonify({"ok": True, "state": cached["data"], "cached": True, "stale": True})
         return jsonify({"error": err_str}), 500
 
-# ── 공개 상태 조회 (캐시 및 Rate Limit 차단용 층별 최적화 적용) ────────────────────────────
+# ── 공개 상태 조회 (1314 에러 완벽 구조 방어 메커니즘 탑재) ────────────────────────────
 @app.route("/api/public/status", methods=["GET"])
 def public_status():
     now = time.time()
@@ -580,8 +595,8 @@ def public_status():
     if floor_filter not in ("2", "3", ""):
         floor_filter = ""
 
-    # 전체, 2층, 3층 등 별도로 쪼갠 층 전용 캐시 불러오기
-    cache = _status_caches.get(floor_filter, {"data": None, "ts": 0, "ttl": 30})
+    # 캐시 불러오기
+    cache = _status_caches.get(floor_filter, {"data": None, "ts": 0, "ttl": 180})
 
     if cache["data"] is not None and (now - cache["ts"]) < cache["ttl"]:
         cached = dict(cache["data"])
@@ -596,7 +611,7 @@ def public_status():
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "관리자 설정이 필요합니다"}), 400
 
-    # API 낭비를 최소화하기 위해 API 호출 전 층이 매핑된 기기만 사전 선별합니다.
+    # 층별 필터 대상 기기 리스트 빌드
     target_reg = registered
     if floor_filter:
         target_reg = [d for d in registered if str(d.get("floor", "3")) == floor_filter]
@@ -616,7 +631,6 @@ def public_status():
                 all_devices = (all_devices.get("devices") or all_devices.get("items")
                                or all_devices.get("item") or all_devices.get("data") or [])
 
-            # 선별된 ID에 속한 기기 리스트만 필터링
             filtered = [d for d in (all_devices or [])
                         if (d.get("deviceId") or d.get("id")) in target_reg_ids]
 
@@ -641,10 +655,9 @@ def public_status():
                 try:
                     state = await api.async_get_device_status(device_id)
                     if state:
-                        _last_known_states[device_id] = state  # 정상 상태 보존소 갱신
+                        _last_known_states[device_id] = state  # 정상 상태 백업
                 except Exception as e:
                     print(f"[WARN] Failed to fetch device status for {device_id}: {e}")
-                    # 조회 실패(API 1314 에러 등) 시, 기존 보존소 데이터로 fallback하여 화면이 리셋되지 않게 보호합니다.
                     state = _last_known_states.get(device_id, {})
                 
                 reg_info = target_registered_by_id.get(device_id)
@@ -656,27 +669,53 @@ def public_status():
             return public_devices
 
     try:
+        # 정상 상태로 상태를 받아오는 데 성공했을 때
         devices = run_async(_do())
         result  = {"ok": True, "devices": devices, "fetchedAt": now, "cached": False}
         
         cache["data"] = result
         cache["ts"]   = now
-        cache["ttl"]  = 30
+        cache["ttl"]  = 180  # 3분(180초) 기본 보존
+        
+        # 기기 가동 상태 정보를 파일 백업소에 업데이트
+        save_states_backup()
         
         return jsonify(result)
+        
     except Exception as e:
         err_str = str(e)
-        if "1314" in err_str or "exceeded" in err_str.lower():
-            cache["ttl"] = 60
+        print(f"[ERROR] public_status 통신 실패: {err_str}")
         
-        stale = cache.get("data")
-        if stale:
-            result = dict(stale)
-            result["cached"] = True
-            result["stale"]  = True
-            result["notice"] = "API 호출 한도 초과 — 잠시 후 자동으로 갱신됩니다"
-            return jsonify(result)
-        return jsonify({"error": err_str}), 500
+        # LG API가 1314 한도 초과 오류로 완전 차단되었을 때의 Fallback 구제책
+        fallback_devices = []
+        for reg in target_reg:
+            device_id = reg.get("deviceId")
+            state = _last_known_states.get(device_id, {})
+            device_obj = {
+                "deviceId": device_id,
+                "deviceInfo": {
+                    "alias":      reg.get("name",  "기기"),
+                    "modelName":  reg.get("model", ""),
+                    "deviceType": reg.get("type",  "DEVICE"),
+                }
+            }
+            fallback_devices.append(_public_device(device_obj, state, reg_info=reg))
+            
+        result = {
+            "ok": True,
+            "devices": fallback_devices,
+            "fetchedAt": now,
+            "cached": True,
+            "stale": True,
+            "notice": "LG API 일시 한도 초과 — 기기의 마지막 최종 상태를 보존 중입니다 (대기 중)"
+        }
+        
+        # 에러 발생 시 반복 조회를 강제로 막기 위해 5분간 캐시 유지
+        cache["data"] = result
+        cache["ts"]   = now
+        cache["ttl"]  = 300  # 5분(300초) 간 에러 캐시 고정
+        
+        return jsonify(result)
 
 # ── 캐시 강제 초기화 (관리자 전용) ────────────────────────
 @app.route("/api/admin/cache/clear", methods=["GET", "POST"])
@@ -685,13 +724,16 @@ def clear_cache():
     for f in _status_caches:
         _status_caches[f]["data"] = None
         _status_caches[f]["ts"]   = 0
-        _status_caches[f]["ttl"]  = 30
+        _status_caches[f]["ttl"]  = 180
     _devices_cache["data"] = None
     _devices_cache["ts"]   = 0
     _devices_cache["ttl"]  = 60
     _state_cache.clear()
     _last_known_states.clear()
-    return jsonify({"ok": True, "message": "모든 캐시가 초기화되었습니다"})
+    if os.path.exists(STATES_BACKUP_FILE):
+        try: os.remove(STATES_BACKUP_FILE)
+        except: pass
+    return jsonify({"ok": True, "message": "모든 캐시 및 백업이 초기화되었습니다"})
 
 @app.route("/api/devices/<device_id>/control", methods=["POST"])
 @admin_required
