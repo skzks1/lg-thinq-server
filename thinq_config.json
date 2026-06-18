@@ -32,7 +32,7 @@
       "floor": "3"
     },
     {
-      "deviceId": "dev26a3c3f3602a4740c76186c01839ca84c1b9df388d9b01bbde6f74639a9828faiceid",
+      "deviceId": "26a3c3f3602a4740c76186c01839ca84c1b9df388d9b01bbde6f74639a9828fa",
       "name": "2층 왼쪽 세탁기",
       "type": "WASHER",
       "model": "F24NXT",
@@ -46,7 +46,7 @@
       "floor": "2"
     },
     {
-      "deviceId": "dev26a3c3f3602a4740c76186c01839ca84c1b9df388d9b01bbde6f74639a9828faiceid",
+      "deviceId": "fecf003b935d337dc21cec0e7381184b720fc26d561950eaa061c1c4cb81a5c5",
       "name": "2층 왼쪽 건조기",
       "type": "DRYER",
       "model": "RH17KXT",
