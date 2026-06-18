@@ -358,6 +358,7 @@ function toggleDetail(id) {
 /* ── 데이터 로드 ── */
 async function loadStatus() {
   try {
+    // 3층 도메인에 맞추어 floor=3 파라미터를 명시적으로 호출합니다.
     const res  = await fetch('https://lg-thinq-server.onrender.com/api/public/status?floor=3', { cache: 'no-store' });
     const data = await res.json();
 
