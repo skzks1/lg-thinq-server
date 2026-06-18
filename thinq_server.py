@@ -70,8 +70,19 @@ CONFIG_FILE = "thinq_config.json"
 _status_cache = {
     "data": None,       # 캐시된 응답
     "ts": 0,            # 마지막 갱신 시각 (time.time())
-    "ttl": 10,           # 캐시 유효 시간 (초) — 자동 새로고침 주기와 맞춤
+    "ttl": 30,          # 캐시 유효 시간 (초) — 10→30초로 늘려 Rate Limit 방지
 }
+
+# 기기 목록 캐시 (/api/devices) — 목록은 자주 안 바뀌므로 TTL 길게
+_devices_cache = {
+    "data": None,
+    "ts": 0,
+    "ttl": 60,          # 60초 캐시
+}
+
+# 기기 상태 캐시 (/api/devices/<id>/state) — ID별 캐시
+_state_cache: dict = {}   # { device_id: {"data": ..., "ts": float} }
+_STATE_CACHE_TTL = 20     # 20초
 
 # ── 관리자 인증 ────────────────────────────────────────────
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
@@ -435,15 +446,31 @@ def get_devices():
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "PAT와 Client ID를 먼저 설정하세요"}), 400
 
+    now = time.time()
+    # 캐시 유효 시 LG API 호출 없이 즉시 반환
+    if _devices_cache["data"] is not None and (now - _devices_cache["ts"]) < _devices_cache["ttl"]:
+        return jsonify({"ok": True, "devices": _devices_cache["data"], "cached": True})
+
     async def _do():
         async with ClientSession() as session:
             return await get_api(session).async_get_device_list()
 
     try:
         result = run_async(_do())
+        _devices_cache["data"] = result
+        _devices_cache["ts"]   = now
+        _devices_cache["ttl"]  = 60  # 정상 응답 시 TTL 복원
         return jsonify({"ok": True, "devices": result})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err_str = str(e)
+        # Rate limit 에러 시 캐시 TTL 자동 연장
+        if "1314" in err_str or "exceeded" in err_str.lower():
+            _devices_cache["ttl"] = 120  # 2분간 재시도 차단
+        # 만료된 캐시라도 있으면 반환 (에러보다 낫다)
+        if _devices_cache["data"] is not None:
+            return jsonify({"ok": True, "devices": _devices_cache["data"], "cached": True, "stale": True,
+                            "notice": "API 호출 한도 초과 — 이전 목록을 표시합니다"})
+        return jsonify({"error": err_str}), 500
 
 @app.route("/api/devices/<device_id>/state", methods=["GET"])
 @admin_required
@@ -451,15 +478,28 @@ def get_device_state(device_id):
     if not CONFIG["pat"] or not CONFIG["client_id"]:
         return jsonify({"error": "PAT와 Client ID를 먼저 설정하세요"}), 400
 
+    now = time.time()
+    cached = _state_cache.get(device_id)
+    if cached and (now - cached["ts"]) < _STATE_CACHE_TTL:
+        return jsonify({"ok": True, "state": cached["data"], "cached": True})
+
     async def _do():
         async with ClientSession() as session:
             return await get_api(session).async_get_device_status(device_id)
 
     try:
         result = run_async(_do())
+        _state_cache[device_id] = {"data": result, "ts": now}
         return jsonify({"ok": True, "state": result})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        err_str = str(e)
+        if "1314" in err_str or "exceeded" in err_str.lower():
+            # Rate limit 시 캐시 TTL 연장
+            if cached:
+                cached["ts"] = now  # 만료 시점 리셋 → 추가 20초 유지
+        if cached:
+            return jsonify({"ok": True, "state": cached["data"], "cached": True, "stale": True})
+        return jsonify({"error": err_str}), 500
 
 # ── 공개 상태 조회 (캐시 적용) ────────────────────────────
 @app.route("/api/public/status", methods=["GET"])
@@ -547,13 +587,16 @@ def public_status():
         return jsonify(result)
     except Exception as e:
         err_str = str(e)
+        # Rate limit(1314) 에러 시 캐시 TTL 자동 연장
+        if "1314" in err_str or "exceeded" in err_str.lower():
+            _status_cache["ttl"] = 60  # 1분간 캐시 유지로 전환
         # API 호출 한도 초과 또는 PAT 오류 시 — 캐시 데이터라도 반환
         stale = _status_cache.get("data")
         if stale:
             result = dict(stale)
             result["cached"] = True
             result["stale"]  = True
-            result["notice"] = "API 오류 — 이전 데이터를 표시합니다"
+            result["notice"] = "API 호출 한도 초과 — 잠시 후 자동으로 갱신됩니다"
             if floor_filter:
                 result["devices"] = [
                     d for d in result.get("devices", [])
@@ -568,7 +611,12 @@ def public_status():
 def clear_cache():
     _status_cache["data"] = None
     _status_cache["ts"]   = 0
-    return jsonify({"ok": True, "message": "캐시가 초기화되었습니다"})
+    _status_cache["ttl"]  = 30  # TTL 복원
+    _devices_cache["data"] = None
+    _devices_cache["ts"]   = 0
+    _devices_cache["ttl"]  = 60  # TTL 복원
+    _state_cache.clear()
+    return jsonify({"ok": True, "message": "모든 캐시가 초기화되었습니다"})
 
 @app.route("/api/devices/<device_id>/control", methods=["POST"])
 @admin_required
