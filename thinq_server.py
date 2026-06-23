@@ -17,6 +17,7 @@ from aiohttp import ClientSession
 from thinqconnect import ThinQApi
 import random
 import requests
+import threading
 
 def send_kakao_message(message):
     access_token = "카카오토큰"
@@ -755,11 +756,105 @@ def control_device(device_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── 자동 백그라운드 폴링 ────────────────────────────────────
+AUTO_REFRESH_INTERVAL = 120  # 2분마다 자동 갱신 (LG API 한도 고려)
+
+def _auto_refresh():
+    """서버 시작 후 백그라운드에서 주기적으로 전체 기기 상태를 갱신합니다."""
+    # 서버가 완전히 뜰 때까지 잠깐 대기
+    time.sleep(10)
+    while True:
+        try:
+            registered = CONFIG.get("devices", [])
+            if not registered or not CONFIG.get("pat") or not CONFIG.get("client_id"):
+                time.sleep(AUTO_REFRESH_INTERVAL)
+                continue
+
+            registered_by_id = {d.get("deviceId"): d for d in registered if d.get("deviceId")}
+            registered_ids   = set(registered_by_id.keys())
+
+            async def _fetch_all():
+                async with ClientSession() as sess:
+                    api         = get_api(sess)
+                    all_devices = await api.async_get_device_list()
+                    if isinstance(all_devices, dict):
+                        all_devices = (all_devices.get("devices") or all_devices.get("items")
+                                       or all_devices.get("item") or all_devices.get("data") or [])
+
+                    filtered = [d for d in (all_devices or [])
+                                if (d.get("deviceId") or d.get("id")) in registered_ids]
+
+                    found_ids = {d.get("deviceId") or d.get("id") for d in filtered}
+                    for reg in registered:
+                        rid = reg.get("deviceId")
+                        if rid and rid not in found_ids:
+                            filtered.append({
+                                "deviceId": rid,
+                                "deviceInfo": {
+                                    "alias":      reg.get("name",  "기기"),
+                                    "modelName":  reg.get("model", ""),
+                                    "deviceType": reg.get("type",  "DEVICE"),
+                                }
+                            })
+
+                    public_devices = []
+                    for device in filtered:
+                        device_id = device.get("deviceId") or device.get("id")
+                        if not device_id:
+                            continue
+                        try:
+                            state = await api.async_get_device_status(device_id)
+                            if state:
+                                _last_known_states[device_id] = state
+                        except Exception as e:
+                            print(f"[AUTO] 기기 상태 조회 실패 {device_id}: {e}")
+                            state = _last_known_states.get(device_id, {})
+                        reg_info = registered_by_id.get(device_id)
+                        public_devices.append(_public_device(device, state, reg_info=reg_info))
+
+                    config_order = {d.get("deviceId"): i for i, d in enumerate(registered)}
+                    public_devices.sort(key=lambda d: config_order.get(d.get("id"), 999))
+                    return public_devices
+
+            now     = time.time()
+            devices = run_async(_fetch_all())
+            result  = {"ok": True, "devices": devices, "fetchedAt": now, "cached": False}
+
+            # 전체 캐시("") 갱신
+            _status_caches[""]["data"] = result
+            _status_caches[""]["ts"]   = now
+            _status_caches[""]["ttl"]  = AUTO_REFRESH_INTERVAL + 30
+
+            # 층별 캐시 갱신
+            for floor in ("2", "3"):
+                floor_devices = [d for d in devices if str(d.get("floor", "")) == floor]
+                floor_result  = {"ok": True, "devices": floor_devices, "fetchedAt": now, "cached": False}
+                _status_caches[floor]["data"] = floor_result
+                _status_caches[floor]["ts"]   = now
+                _status_caches[floor]["ttl"]  = AUTO_REFRESH_INTERVAL + 30
+
+            save_states_backup()
+            print(f"[AUTO] 기기 상태 자동 갱신 완료 — {len(devices)}개 기기")
+
+        except Exception as e:
+            print(f"[AUTO] 자동 갱신 실패: {e}")
+
+        time.sleep(AUTO_REFRESH_INTERVAL)
+
+
+def start_auto_refresh():
+    t = threading.Thread(target=_auto_refresh, daemon=True)
+    t.start()
+    print("[AUTO] 백그라운드 자동 갱신 스레드 시작 (2분 주기)")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print(" LG ThinQ 대시보드 서버 시작")
     print(f" 공개 상태조회: {PUBLIC_SITE_URL}")
     print(f" 관리자 사이트: {PUBLIC_SITE_URL}/admin")
+    print(f" 자동 갱신 주기: {AUTO_REFRESH_INTERVAL}초")
     print("=" * 50)
+    start_auto_refresh()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
