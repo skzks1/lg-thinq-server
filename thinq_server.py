@@ -296,7 +296,7 @@ def _public_device(device, state, reg_info=None):
 
     remain_seconds = remain_hour * 3600 + remain_minute * 60 + remain_second
 
-    floor = str((reg_info or {}).get("floor") or info.get("floor") or device.get("floor") or "3")
+    floor = str((reg_info or {}).get("floor") or info.get("floor") or device.get("floor") or "")
 
     return {
         "id":               device.get("deviceId") or device.get("id"),
@@ -614,7 +614,7 @@ def public_status():
     # 층별 필터 대상 기기 리스트 빌드
     target_reg = registered
     if floor_filter:
-        target_reg = [d for d in registered if str(d.get("floor", "3")) == floor_filter]
+        target_reg = [d for d in registered if str(d.get("floor", "")) == floor_filter]
 
     if not target_reg:
         return jsonify({"ok": True, "devices": [], "notice": f"{floor_filter}층에 등록된 기기가 없습니다"})
