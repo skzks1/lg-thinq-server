@@ -757,7 +757,7 @@ def control_device(device_id):
         return jsonify({"error": str(e)}), 500
 
 # ── 자동 백그라운드 폴링 ────────────────────────────────────
-AUTO_REFRESH_INTERVAL = 120  # 2분마다 자동 갱신 (LG API 한도 고려)
+AUTO_REFRESH_INTERVAL = 25  # 25초마다 자동 갱신 (프론트 30초 폴링보다 약간 빠르게)
 
 def _auto_refresh():
     """서버 시작 후 백그라운드에서 주기적으로 전체 기기 상태를 갱신합니다."""
@@ -797,11 +797,10 @@ def _auto_refresh():
                                 }
                             })
 
-                    public_devices = []
-                    for device in filtered:
+                    async def _fetch_one(device):
                         device_id = device.get("deviceId") or device.get("id")
                         if not device_id:
-                            continue
+                            return None
                         try:
                             state = await api.async_get_device_status(device_id)
                             if state:
@@ -810,7 +809,10 @@ def _auto_refresh():
                             print(f"[AUTO] 기기 상태 조회 실패 {device_id}: {e}")
                             state = _last_known_states.get(device_id, {})
                         reg_info = registered_by_id.get(device_id)
-                        public_devices.append(_public_device(device, state, reg_info=reg_info))
+                        return _public_device(device, state, reg_info=reg_info)
+
+                    results = await asyncio.gather(*[_fetch_one(d) for d in filtered])
+                    public_devices = [r for r in results if r is not None]
 
                     config_order = {d.get("deviceId"): i for i, d in enumerate(registered)}
                     public_devices.sort(key=lambda d: config_order.get(d.get("id"), 999))
