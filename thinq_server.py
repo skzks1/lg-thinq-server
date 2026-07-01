@@ -849,9 +849,10 @@ def start_auto_refresh():
     t.start()
     print("[AUTO] 백그라운드 자동 갱신 스레드 시작 (2분 주기)")
 
-app.get('/', (req, res) => {
-    res.status(200).send('OK');
-});
+
+@app.route('/ping', methods=['GET'])
+def cron_ping():
+    return "OK", 200
 
 
 if __name__ == "__main__":
